@@ -1,0 +1,179 @@
+:root {
+  --input-background: rgba(57, 63, 84, 0.8);
+  --input-text-inactive: hsl(227, 18%, 55%);
+  --input-text-active: hsl(222, 100%, 87%);
+}
+
+/* Input is shamelessly stolen from https://codepen.io/PRtheRose/pen/BNgEJo */
+input {
+  border-style: none;
+  background: transparent;
+  outline: none;
+}
+
+button {
+  padding: 0;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 100% 0;
+  }
+}
+
+.search {
+  /* position: relative;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  max-width: 400px; */
+  margin: 0 auto;
+  border-radius: 2px;
+  background: var(--input-background);
+  /* margin-top: 200px; */
+}
+
+.search:after {
+  content: "";
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  z-index: 999;
+  height: 2px;
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
+  background-position: 0% 0%;
+  background: linear-gradient(
+    to right,
+    #b294ff,
+    #57e6e6,
+    #feffb8,
+    #57e6e6,
+    #b294ff,
+    #57e6e6
+  );
+  background-size: 500% auto;
+  animation: gradient 3s linear infinite;
+}
+
+.search input {
+  color: var(--input-text-active);
+  font-size: 1.8rem;
+  line-height: 2.4rem;
+  vertical-align: middle;
+  padding: 1.4rem 1rem 1.6rem;
+}
+
+.search input::-webkit-input-placeholder {
+  color: var(--input-text-inactive);
+}
+
+.search button {
+  font-size: 2.4rem;
+  line-height: 2.4rem;
+  vertical-align: middle;
+  margin-right: 0.75rem;
+  width: 1.5rem;
+}
+
+button {
+  color: var(--input-text-inactive);
+  transition: color 0.25s;
+}
+
+button:hover:not(:disabled) {
+  color: var(--input-text-active);
+  cursor: pointer;
+}
+
+/* loader */
+.loader,
+.loader:before,
+.loader:after {
+  background: var(--input-text-active);
+  -webkit-animation: load1 1s infinite ease-in-out;
+  animation: load1 1s infinite ease-in-out;
+  width: 1em;
+  height: 4em;
+}
+
+.loader {
+  color: var(--input-text-active);
+  text-indent: -9999em;
+  margin-left: 0.5rem;
+  position: relative;
+  font-size: 4px;
+  -webkit-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-animation-delay: -0.16s;
+  animation-delay: -0.16s;
+}
+
+.loader:before,
+.loader:after {
+  position: absolute;
+  top: 0;
+  content: "";
+}
+
+.loader:before {
+  left: -1.5em;
+  -webkit-animation-delay: -0.32s;
+  animation-delay: -0.32s;
+}
+
+.loader:after {
+  left: 1.5em;
+}
+
+@-webkit-keyframes load1 {
+  0%,
+  80%,
+  100% {
+    box-shadow: 0 0;
+    height: 4em;
+  }
+  40% {
+    box-shadow: 0 -2em;
+    height: 5em;
+  }
+}
+
+@keyframes load1 {
+  0%,
+  80%,
+  100% {
+    box-shadow: 0 0;
+    height: 4em;
+  }
+  40% {
+    box-shadow: 0 -2em;
+    height: 5em;
+  }
+}
+
+/* results */
+.result {
+  background-color: var(--input-background);
+  padding: 0.75em 0.75em 0.75em 0.75em;
+  color: var(--input-text-active);
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: all 150ms ease-in-out;
+}
+
+.result:not(:last-child) {
+  border-bottom: 1px solid hsl(187, 54%, 52%);
+}
+
+.result:hover {
+  filter: brightness(1.2);
+}
