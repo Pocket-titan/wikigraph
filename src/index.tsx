@@ -4,18 +4,18 @@ import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 
-(ReactDOM as any).unstable_createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
-
-// ReactDOM.render(
+// (ReactDOM as any).unstable_createRoot(document.getElementById("root")).render(
 //   <React.StrictMode>
 //     <App />
-//   </React.StrictMode>,
-//   document.getElementById('root')
+//   </React.StrictMode>
 // );
+
+ReactDOM.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById("root")
+);
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { animated, useSpring } from "react-spring/three";
-import { HTML } from "@react-three/drei";
+import { Html } from "@react-three/drei";
 
 const Node = ({
   label,
@@ -36,9 +36,9 @@ const Node = ({
         <animated.meshStandardMaterial attach="material" color={color} />
       </mesh>
       {hovered && (
-        <HTML position={[radius, 0, 0]} scaleFactor={2} zIndexRange={[0, 100]}>
+        <Html position={[radius, 0, 0]} scaleFactor={2} zIndexRange={[0, 100]}>
           <div style={{ background: "white", padding: 3, borderRadius: 2 }}>{label}</div>
-        </HTML>
+        </Html>
       )}
     </group>
   );

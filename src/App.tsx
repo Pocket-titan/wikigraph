@@ -206,7 +206,7 @@ const App = () => {
         />
       </div>
       <Canvas
-        concurrent
+        // concurrent
         camera={{
           position: [0, 0, 32],
           near: 0.1,
