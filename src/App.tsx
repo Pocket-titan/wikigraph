@@ -1,15 +1,13 @@
-import React, { Suspense, useState, useRef, useMemo, useEffect } from "react";
-import { Canvas, useFrame } from "react-three-fiber";
+import React, { Suspense, useState, useRef, useLayoutEffect, useEffect } from "react";
+import { Canvas } from "react-three-fiber";
 import { Stats, TrackballControls } from "@react-three/drei";
 import * as THREE from "three";
 import _ from "lodash";
-
-import Graph, { Id, Vertex, Edge, Degrees, Position } from "./ts/graph";
-import { getLinks, getBacklinks } from "./ts/wiki";
-import Node from "./components/Node";
-import Link from "./components/Link";
-import Input from "./components/Input";
+import Graph, { Id, Vertex, Edge, Degrees } from "ts/graph";
+import { getLinks, getBacklinks } from "ts/wiki";
+import Input from "components/Input";
 import Pages from "components/Pages";
+import GraphView from "components/Graph";
 
 const makeVertex = (id: Id): Vertex => ({ id });
 
@@ -55,19 +53,22 @@ async function buildGraph(titles: string[]) {
     { vertices: [] as Vertex[], edges: [] as Edge[] }
   );
 
-  let graph = new Graph(vertices, edges)
-    .calculateDegrees()
-    .filter((vertex) => vertex.degree > 1)
-    .calculateDegrees()
+  let graph = new Graph(vertices, edges).calculateDegrees();
+
+  if (titles.length > 1) {
+    graph = graph.filter((vertex) => vertex.degree > 1).calculateDegrees();
+  }
+
+  return graph
     .map(
       (vertex) => {
         let radius = 5 + _.clamp(2 * vertex.degree, 0, 15);
 
         let color = titles.includes(vertex.id)
-          ? "#ffc831"
+          ? "#f5ba17"
           : vertex.id === titles[titles.length - 1]
           ? "#ee3f0a"
-          : "#4adfd2";
+          : "#2dd4c7";
 
         return {
           ...vertex,
@@ -88,43 +89,28 @@ async function buildGraph(titles: string[]) {
       }
     )
     .layout(titles, { initialRadius: 1000 });
-
-  return graph;
 }
 
 type UnwrapPromise<T> = T extends Promise<infer U> ? U : never;
 
-type DisplayGraph = UnwrapPromise<ReturnType<typeof buildGraph>>;
+export type DisplayGraph = UnwrapPromise<ReturnType<typeof buildGraph>>;
 
 const Scene = ({ graph }: { graph?: DisplayGraph }) => {
   return (
     <>
-      <ambientLight color="#ffffff" intensity={0.1} />
+      <ambientLight />
       <hemisphereLight color="#ffffff" intensity={1.0} />
-      {graph && (
-        <>
-          {graph.vertices.map(({ id, radius, color, x, y }) => (
-            <Node key={id} label={id} radius={radius} color={color} position={[x, y]} />
-          ))}
-          {graph.edges.map(({ id, source, target, from, to, weight }) => (
-            <Link
-              key={id}
-              from={[from.x, from.y]}
-              to={[to.x, to.y]}
-              lineWidth={0.35 + weight / 10}
-            />
-          ))}
-        </>
-      )}
+      {/* <pointLight position={[0, 0, 15]} intensity={2.0} color="#ffffff" /> */}
+      {graph && <GraphView graph={graph} />}
     </>
   );
 };
 
 export type Data = {
   [key: string]: {
-    in: number;
-    out: number;
-    degree: number;
+    in: number | string;
+    out: number | string;
+    degree: number | string;
   };
 };
 
@@ -136,6 +122,7 @@ const App = () => {
 
   useEffect(() => {
     if (titles.length === 0) {
+      setGraph(undefined);
       return;
     }
 
@@ -147,9 +134,9 @@ const App = () => {
           let vertex = graph.getVertex(title);
 
           obj[title] = {
-            in: vertex?.inDegree || 0,
-            out: vertex?.outDegree || 0,
-            degree: vertex?.degree || 0,
+            in: vertex?.inDegree ?? "?",
+            out: vertex?.outDegree ?? "?",
+            degree: vertex?.degree ?? "?",
           };
 
           return obj;
@@ -168,7 +155,7 @@ const App = () => {
       <div
         style={{
           position: "absolute",
-          zIndex: 1,
+          zIndex: 10,
           width: "100%",
           display: "flex",
           justifyContent: "center",
@@ -206,7 +193,7 @@ const App = () => {
         />
       </div>
       <Canvas
-        // concurrent
+        concurrent
         camera={{
           position: [0, 0, 32],
           near: 0.1,

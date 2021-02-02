@@ -279,7 +279,9 @@ export async function api(params: Params = {}) {
   let cacheKey = JSON.stringify(params);
 
   if (Cache.has(cacheKey)) {
-    return JSON.parse(Cache.get(cacheKey)!);
+    try {
+      return JSON.parse(Cache.get(cacheKey)!);
+    } catch {}
   }
 
   let results = await batchRequest(params);
@@ -417,7 +419,9 @@ export async function getBacklinks(title: string): Promise<string[]> {
     gblredirect: true,
   });
 
-  return (_.isPlainObject(backlinks) ? [backlinks] : backlinks).map(_.iteratee("title"));
+  return (!backlinks ? [] : _.isPlainObject(backlinks) ? [backlinks] : backlinks).map(
+    _.iteratee("title")
+  );
 }
 
 export async function search(query: string): Promise<string[]> {

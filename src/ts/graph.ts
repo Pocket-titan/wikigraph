@@ -224,20 +224,22 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
       ).map((x) => getVertex(vertices, x));
 
       if (!me.x && !me.y) {
-        let [angle, radius] = [
-          _.random(0, 2 * Math.PI),
+        const angle = _.random(0, 2 * Math.PI);
+        const mean = initialRadius / 4 + (titleVertex.degree ** 2 / maxDegree ** 2) * 3;
+        const radius =
           chance.normal({
-            mean: initialRadius / 4 + (titleVertex.degree ** 2 / maxDegree ** 2) * 3,
-            dev: 0.15,
+            mean,
+            dev: mean / 6,
           }) +
-            me.inDegree / 2,
-        ];
+          me.inDegree / 2;
 
         me.x = titleVertex.x! + radius * Math.cos(angle);
         me.y = titleVertex.y! + radius * Math.sin(angle);
       }
     });
 
+    // If there's still nodes without positions (can happen if they have no links to titleNodes,
+    // for example), we still need to give 'em a position
     edges.forEach((edge) => {
       let source = getVertex(vertices, edge.source);
       let target = getVertex(vertices, edge.target);

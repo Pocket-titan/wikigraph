@@ -98,7 +98,7 @@ const Pages = ({
   const rows: Row[] = pages.map(({ title }) => ({
     id: title,
     title,
-    ...(data?.[title] || { in: 0, out: 0, degree: 0 }),
+    ...(data?.[title] || { in: "?", out: "?", degree: "?" }),
   }));
 
   const columns: Column[] = [

@@ -14,6 +14,7 @@ const Link = ({
 }) => {
   return (
     <Line
+      matrixAutoUpdate={false}
       points={[
         [...from, -1],
         [...to, -1],

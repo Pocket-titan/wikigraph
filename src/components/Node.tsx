@@ -21,6 +21,7 @@ const Node = ({
 
   return (
     <group
+      matrixAutoUpdate={false}
       position={[...position, 0]}
       onPointerOver={(e) => {
         e.stopPropagation();
