@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as three from "three";
-import { useUpdate } from "react-three-fiber";
+import { useFrame, useUpdate } from "react-three-fiber";
 import type { DisplayGraph } from "../App";
 import { Html } from "@react-three/drei";
+import { useSpring } from "react-spring";
 
 const HoverInfo = ({
   vertex: { id, x, y, color, radius },
@@ -18,7 +19,8 @@ const dummyObject = new three.Object3D();
 const dummyColor = new three.Color();
 
 const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
-  const [hovered, setHovered] = useState<number>();
+  const [hovered, setHovered] = useState<{ instanceId: number; id: string }>();
+  const colorAttrib = useRef<three.BufferAttribute>();
 
   const nodeMesh = useUpdate<three.InstancedMesh>(
     (mesh) => {
@@ -54,15 +56,22 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
   const { edgeColors } = useMemo(() => {
     const edgeColors = Float32Array.from(
       edges
-        .map((edge, i) => [
-          [0.2, 0.6, 0.9],
-          [0.7, 0.2, 0.1],
-        ])
+        .map((edge, i) =>
+          hovered && hovered.id !== edge.source && hovered.id !== edge.target
+            ? [
+                [0.086, 0.086, 0.11],
+                [0.086, 0.086, 0.11],
+              ]
+            : [
+                [0.2, 0.6, 0.9],
+                [0.7, 0.2, 0.1],
+              ]
+        )
         .flat(2)
     );
 
     return { edgeColors };
-  }, [edges]);
+  }, [edges, hovered]);
 
   const setColor = useCallback(
     (id: number, color: three.Color | string) => {
@@ -73,9 +82,44 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
     [nodeMesh]
   );
 
+  // const [{ color }, set] = useSpring(() => ({
+  //   color: "#ffffff",
+  //   config: {
+  //     mass: 5,
+  //     duration: 125,
+  //   },
+  // }));
+
+  // useFrame(() => {
+  //   if (hovered) {
+  //     const d = color.interpolate((v) => v).getValue();
+  //     console.log(`d`, d);
+  //     dummyColor.set(d!);
+  //     // dummyColor.toArray(nodeMesh.current!.instanceColor, hovered * 3);
+  //     setColor(hovered, dummyColor);
+  //     // colorAttrib.current!.needsUpdate = true;
+  //   }
+  // });
+
   useEffect(() => {
     if (hovered !== undefined) {
-      setColor(hovered, "#f06");
+      vertices.forEach((vertex, i) => {
+        if (!vertex.connections.includes(hovered.id)) {
+          setColor(i, "#16161b");
+        }
+      });
+
+      setColor(hovered.instanceId, "#f06");
+      // set({
+      //   // @ts-expect-error
+      //   to: { color: "#f06" },
+      //   from: { color: "#fff" },
+      //   reset: true,
+      // });
+    } else {
+      vertices.forEach((vertex, i) => {
+        setColor(i, vertex.color);
+      });
     }
   }, [hovered, setColor]);
 
@@ -88,30 +132,41 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
         ref={nodeMesh}
         args={[null!, null!, vertices.length]}
         onPointerOut={({ instanceId }) => {
-          let vertex = vertices[instanceId!];
-          setColor(instanceId!, vertex.color);
-          setHovered(undefined);
-        }}
-        onPointerMove={({ instanceId }) => {
-          if (hovered === undefined) {
-            setHovered(instanceId!);
+          if (!instanceId) {
             return;
           }
 
-          if (hovered !== instanceId) {
-            let vertex = vertices[hovered];
-            setColor(hovered, vertex.color);
-            setHovered(instanceId);
+          let vertex = vertices[instanceId];
+
+          setColor(instanceId, vertex.color);
+          setHovered(undefined);
+        }}
+        onPointerMove={({ instanceId }) => {
+          if (!instanceId) {
+            return;
+          }
+
+          let vertex = vertices[instanceId];
+
+          if (hovered === undefined) {
+            setHovered({ instanceId, id: vertex.id });
+            return;
+          }
+
+          if (hovered.instanceId !== instanceId) {
+            setColor(hovered.instanceId, vertex.color);
+            setHovered({ instanceId, id: vertex.id });
           }
         }}
       >
         <circleBufferGeometry args={[1, 30]} />
         <meshBasicMaterial />
       </instancedMesh>
-      {hovered !== undefined && <HoverInfo vertex={vertices[hovered]} />}
+      {hovered !== undefined && <HoverInfo vertex={vertices[hovered.instanceId]} />}
       <lineSegments>
         <bufferGeometry ref={edgeGeometry} attach="geometry">
           <bufferAttribute
+            ref={colorAttrib}
             attachObject={["attributes", "color"]}
             args={[edgeColors, 3]}
           />

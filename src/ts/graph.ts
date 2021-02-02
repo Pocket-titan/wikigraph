@@ -89,8 +89,8 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
   }
 
   map<A extends Vertex, B extends Edge = U>(
-    f: (vertex: T & { [key: string]: any }, graph: this) => A,
-    g?: (edge: U & { [key: string]: any }, graph: this) => B
+    f: (vertex: T, graph: this) => A,
+    g?: (edge: U, graph: this) => B
   ) {
     let [vertices, edges] = [new Map(), new Map()];
 
@@ -138,9 +138,9 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
     return new Graph(vertices, edges);
   }
 
-  calculateDegrees(): Graph<T & Degrees, U> {
+  calculateDegrees(): Graph<T & Degrees & { connections: Id[] }, U> {
     let [vertices, edges] = [
-      new Map<Id, T & Degrees>(this._vertices as any),
+      new Map<Id, T & Degrees & { connections: Id[] }>(this._vertices as any),
       new Map(this._edges),
     ];
 
@@ -148,6 +148,8 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
       (["degree", "inDegree", "outDegree"] as const).forEach((key) => {
         vertex[key] = 0;
       });
+
+      vertex.connections = [];
     });
 
     edges.forEach((edge) => {
@@ -158,21 +160,26 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
       source.degree += 1;
       target.inDegree += 1;
       target.degree += 1;
+
+      source.connections.push(target.id);
+      target.connections.push(source.id);
     });
 
-    return new Graph<T & Degrees, U>(vertices, edges);
+    return new Graph<T & Degrees & { connections: Id[] }, U>(vertices, edges);
   }
 
   layout(
     titles: string[],
     {
-      initialAngle = Math.PI * (3 - Math.sqrt(5)),
+      // initialAngle = Math.PI * (3 - Math.sqrt(5)),
+      initialAngle = (2 * Math.PI) / titles.length,
       initialRadius = 10,
     }: {
       initialAngle?: number;
       initialRadius?: number;
     } = {
-      initialAngle: Math.PI * (3 - Math.sqrt(5)),
+      // initialAngle: Math.PI * (3 - Math.sqrt(5)),
+      initialAngle: (2 * Math.PI) / titles.length,
       initialRadius: 10,
     }
   ): T extends Degrees

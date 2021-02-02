@@ -65,16 +65,16 @@ async function buildGraph(titles: string[]) {
         let radius = 5 + _.clamp(2 * vertex.degree, 0, 15);
 
         let color = titles.includes(vertex.id)
-          ? "#f5ba17"
-          : vertex.id === titles[titles.length - 1]
-          ? "#ee3f0a"
+          ? vertex.id === titles[titles.length - 1]
+            ? "#f5540a"
+            : "#f5ba17"
           : "#2dd4c7";
 
         return {
           ...vertex,
           radius,
           color,
-        } as Vertex & Degrees & { radius: number; color: string };
+        } as typeof vertex & { radius: number; color: string };
       },
       (edge, graph) => {
         let source = graph.getVertex(edge.source);
@@ -85,7 +85,7 @@ async function buildGraph(titles: string[]) {
         return {
           ...edge,
           weight,
-        } as Edge & { weight: number };
+        } as typeof edge & { weight: number };
       }
     )
     .layout(titles, { initialRadius: 1000 });
@@ -201,6 +201,9 @@ const App = () => {
           zoom: 2,
         }}
         orthographic
+        onCreated={({ gl }) => {
+          gl.outputEncoding = THREE.sRGBEncoding;
+        }}
         onClick={() => {
           inputRef.current?.blur();
         }}
