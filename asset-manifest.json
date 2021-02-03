@@ -1,8 +1,8 @@
 {
   "files": {
     "main.css": "/wikigraph/static/css/main.ace76e7f.chunk.css",
-    "main.js": "/wikigraph/static/js/main.146b388c.chunk.js",
-    "main.js.map": "/wikigraph/static/js/main.146b388c.chunk.js.map",
+    "main.js": "/wikigraph/static/js/main.ad4f4f1d.chunk.js",
+    "main.js.map": "/wikigraph/static/js/main.ad4f4f1d.chunk.js.map",
     "runtime-main.js": "/wikigraph/static/js/runtime-main.efe56e99.js",
     "runtime-main.js.map": "/wikigraph/static/js/runtime-main.efe56e99.js.map",
     "static/js/2.f6cd7dea.chunk.js": "/wikigraph/static/js/2.f6cd7dea.chunk.js",
@@ -17,6 +17,6 @@
     "static/js/runtime-main.efe56e99.js",
     "static/js/2.f6cd7dea.chunk.js",
     "static/css/main.ace76e7f.chunk.css",
-    "static/js/main.146b388c.chunk.js"
+    "static/js/main.ad4f4f1d.chunk.js"
   ]
 }
