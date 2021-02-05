@@ -8,7 +8,7 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import TableSortLabel from "@material-ui/core/TableSortLabel";
 import Paper from "@material-ui/core/Paper";
-import type { Data } from "../App";
+import type { Data } from "ts/hooks/useStore";
 
 type Page = {
   title: string;
@@ -124,6 +124,9 @@ const Pages = ({
     },
   ];
 
+  const firstCellWidth = 125;
+  const cellWidth = 50;
+
   return (
     <TableContainer
       component={Paper}
@@ -131,7 +134,6 @@ const Pages = ({
         maxHeight: "40vh",
         boxShadow: "0px 5px 10px rgba(0,0,0,0.19), 2px 2px 5px rgba(0,0,0,0.20)",
         background: "var(--input-background)",
-        // width: 275,
       }}
     >
       <Table stickyHeader style={{ color: "hsl(227, 18%, 70%)", width: "unset" }}>
@@ -148,9 +150,11 @@ const Pages = ({
                     i === 0 ? 10 : 0
                   }px`,
                   background: "var(--input-background)",
-                  ...{
-                    maxWidth: i !== 0 ? 80 : 100,
-                  },
+                  ...(i === 0
+                    ? {
+                        maxWidth: firstCellWidth,
+                      }
+                    : { width: cellWidth }),
                 }}
               >
                 <TableSortLabel
@@ -164,6 +168,7 @@ const Pages = ({
                   }}
                   style={{
                     color: "hsl(227, 18%, 70%)",
+                    fontSize: "1.1em",
                   }}
                 >
                   {column.label}
@@ -208,7 +213,8 @@ const Pages = ({
                   color: "hsl(227, 18%, 75%)",
                   borderBottom: i === rows.length - 1 ? "none" : "1.5px solid #5e9a9e",
                   padding: "6px 0px 6px 10px",
-                  maxWidth: 100,
+                  maxWidth: firstCellWidth,
+                  fontSize: "0.9em",
                 }}
               >
                 {row.title}
@@ -220,7 +226,8 @@ const Pages = ({
                   color: "hsl(227, 18%, 75%)",
                   borderBottom: i === rows.length - 1 ? "none" : "1.5px solid #5e9a9e",
                   padding: "6px 0px 6px 0px",
-                  maxWidth: 80,
+                  width: cellWidth,
+                  fontSize: "0.9em",
                 }}
               >
                 {row.in}
@@ -232,7 +239,8 @@ const Pages = ({
                   color: "hsl(227, 18%, 75%)",
                   borderBottom: i === rows.length - 1 ? "none" : "1.5px solid #5e9a9e",
                   padding: "6px 0px 6px 0px",
-                  maxWidth: 80,
+                  width: cellWidth,
+                  fontSize: "0.9em",
                 }}
               >
                 {row.out}
@@ -244,7 +252,8 @@ const Pages = ({
                   color: "hsl(227, 18%, 75%)",
                   borderBottom: i === rows.length - 1 ? "none" : "1.5px solid #5e9a9e",
                   padding: "6px 10px 6px 0px",
-                  maxWidth: 80,
+                  width: cellWidth,
+                  fontSize: "0.9em",
                 }}
               >
                 {row.degree}

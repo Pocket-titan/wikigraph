@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as three from "three";
-import { useFrame, useUpdate } from "react-three-fiber";
-import type { DisplayGraph } from "../App";
+import { useThree, useUpdate } from "react-three-fiber";
+import type { DisplayGraph } from "ts/graph";
+import { useStore } from "ts/hooks/useStore";
 import { Html } from "@react-three/drei";
-import { useSpring } from "react-spring";
+import { OrthographicCamera } from "three";
 
 const HoverInfo = ({
   vertex: { id, x, y, color, radius },
@@ -11,7 +12,17 @@ const HoverInfo = ({
   vertex: { id: string; x: number; y: number; color: string; radius: number };
 }) => (
   <Html position={[x + radius, y, 1]} scaleFactor={2} zIndexRange={[0, 100]}>
-    <div style={{ background: "white", padding: 3, borderRadius: 2 }}>{id}</div>
+    <div
+      style={{
+        background: "white",
+        padding: 3,
+        borderRadius: 2,
+        width: "100%",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {id}
+    </div>
   </Html>
 );
 
@@ -19,13 +30,21 @@ const dummyObject = new three.Object3D();
 const dummyColor = new three.Color();
 
 const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
+  const setClicked = useStore((state) => state.setClicked);
   const [hovered, setHovered] = useState<{ instanceId: number; id: string }>();
-  const colorAttrib = useRef<three.BufferAttribute>();
+  let { camera } = useThree();
+
+  console.log(
+    `vertices`,
+    vertices.find(({ id }) => id === "Kaas")
+  );
+
+  console.log(`camera.position`, camera.position);
 
   const nodeMesh = useUpdate<three.InstancedMesh>(
     (mesh) => {
       vertices.forEach((vertex, i) => {
-        dummyObject.position.set(vertex.x, vertex.y, 0);
+        dummyObject.position.set(vertex.x, vertex.y, 1);
         dummyObject.scale.set(vertex.radius, vertex.radius, 1);
         dummyObject.updateMatrix();
         mesh.setMatrixAt(i, dummyObject.matrix);
@@ -33,6 +52,9 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
         dummyColor.set(vertex.color);
         mesh.setColorAt(i, dummyColor);
       });
+
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.geometry.computeBoundingSphere();
     },
     [vertices]
   );
@@ -82,25 +104,6 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
     [nodeMesh]
   );
 
-  // const [{ color }, set] = useSpring(() => ({
-  //   color: "#ffffff",
-  //   config: {
-  //     mass: 5,
-  //     duration: 125,
-  //   },
-  // }));
-
-  // useFrame(() => {
-  //   if (hovered) {
-  //     const d = color.interpolate((v) => v).getValue();
-  //     console.log(`d`, d);
-  //     dummyColor.set(d!);
-  //     // dummyColor.toArray(nodeMesh.current!.instanceColor, hovered * 3);
-  //     setColor(hovered, dummyColor);
-  //     // colorAttrib.current!.needsUpdate = true;
-  //   }
-  // });
-
   useEffect(() => {
     if (hovered !== undefined) {
       vertices.forEach((vertex, i) => {
@@ -110,12 +113,6 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
       });
 
       setColor(hovered.instanceId, "#f06");
-      // set({
-      //   // @ts-expect-error
-      //   to: { color: "#f06" },
-      //   from: { color: "#fff" },
-      //   reset: true,
-      // });
     } else {
       vertices.forEach((vertex, i) => {
         setColor(i, vertex.color);
@@ -128,11 +125,18 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
       <instancedMesh
         // We set the `key` prop such that React recreates it everytime `vertices.length` changes,
         // this is because we can't increase the count of an InstancedMesh without recreating it
-        key={vertices.length}
+        key={
+          vertices[0]?.id ??
+          "0" + vertices.length + vertices[(vertices.length || 1) - 1]?.id ??
+          "0" + edges[0]?.id ??
+          "0" + edges.length + edges[(edges.length || 1) - 1]?.id ??
+          "0"
+        }
+        matrixAutoUpdate={false}
         ref={nodeMesh}
         args={[null!, null!, vertices.length]}
         onPointerOut={({ instanceId }) => {
-          if (!instanceId) {
+          if (instanceId === undefined) {
             return;
           }
 
@@ -142,7 +146,7 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
           setHovered(undefined);
         }}
         onPointerMove={({ instanceId }) => {
-          if (!instanceId) {
+          if (instanceId === undefined) {
             return;
           }
 
@@ -158,15 +162,22 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
             setHovered({ instanceId, id: vertex.id });
           }
         }}
+        onPointerUp={({ instanceId }) => {
+          if (instanceId === undefined) {
+            return;
+          }
+
+          let vertex = vertices[instanceId];
+          setClicked(vertex);
+        }}
       >
         <circleBufferGeometry args={[1, 30]} />
         <meshBasicMaterial />
       </instancedMesh>
       {hovered !== undefined && <HoverInfo vertex={vertices[hovered.instanceId]} />}
-      <lineSegments>
+      <lineSegments matrixAutoUpdate={false}>
         <bufferGeometry ref={edgeGeometry} attach="geometry">
           <bufferAttribute
-            ref={colorAttrib}
             attachObject={["attributes", "color"]}
             args={[edgeColors, 3]}
           />
@@ -180,7 +191,6 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
           linewidth={0.5}
         />
       </lineSegments>
-
       {/* <primitive ref={nodeMesh} object={instancedNodeMesh} /> */}
       {/* <instancedMesh ref={nodeMesh} args={[null!, null!, 100000]}>
         <circleBufferGeometry args={[1, 30]} />

@@ -442,3 +442,80 @@ export async function search(query: string): Promise<string[]> {
 
   return pages.map(_.iteratee("title"));
 }
+
+export async function getImages(title: string) {
+  let results = await api({
+    titles: title,
+    generator: "images",
+    gimlimit: "max",
+    prop: ["imageinfo", "info"],
+    iilimit: "max",
+    iiprop: [
+      "url",
+      "size",
+      "canonicaltitle",
+      "mime",
+      "thumbmime",
+      "user",
+      "mediatype",
+      "comment",
+      "parsedcomment",
+    ],
+  });
+
+  if (_.isPlainObject(results)) {
+    results = [results];
+  }
+
+  return _.uniqBy(
+    (results || [])
+      .filter(
+        (result) =>
+          ![
+            "Wiktionary-logo.svg",
+            "Wikibooks-logo.svg",
+            "Commons-logo.svg",
+            "1rightarrow blue.svg",
+            "Disambig-dark.svg",
+            "Nuvola single chevron right.svg",
+            "Portal.svg",
+            "Crystal Clear app package network.png",
+            "Internet-web-browser.svg",
+            "Wikivoyage-Logo-v3-icon.svg",
+            "Wikisource-logo.svg",
+            "Wikinews-logo.svg",
+            "Red pog.svg",
+            "Esculaap4.svg",
+            "Portal icon.svg",
+            "Speakerlink.svg",
+            "Brosen windrose nl.svg",
+          ]
+            .map((file) => "Bestand:" + file)
+            .includes(result.title) &&
+          !result.title.startsWith("Bestand:P ") &&
+          !result.title.endsWith("-icon.svg") &&
+          !result.title.endsWith("-logo.svg")
+      )
+      .map((result: any) => ({
+        ..._.omit(result, "imageinfo"),
+        ...result.imageinfo[0],
+      }))
+      .filter((result) => result.width > 75 && result.height > 75),
+    _.iteratee("url")
+  );
+}
+
+export async function getFileUsage(
+  title: string
+): Promise<{ title: string; url: string }[]> {
+  let results = await api({
+    titles: title,
+    prop: "globalusage",
+    gusite: "nlwiki",
+    gunamespace: 0,
+    gulimit: "max",
+    guprop: ["url"],
+  });
+
+  return results.globalusage;
+}

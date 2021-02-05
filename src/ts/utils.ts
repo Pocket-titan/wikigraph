@@ -19,3 +19,13 @@ export const merge = (object: any, ...sources: any[]) => {
 export const permutations = function* <T>(arr: T[], size = arr.length): Generator<T[]> {
   return yield* G.permutation(arr, size);
 };
+
+export const beautifyTitle = (title: string) => {
+  const beautifulTitle = title.replace("Bestand:", "").split(".");
+
+  if (beautifulTitle.length > 1) {
+    beautifulTitle.splice(beautifulTitle.length - 1);
+  }
+
+  return beautifulTitle.join(".");
+};

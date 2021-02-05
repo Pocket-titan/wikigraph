@@ -1,5 +1,6 @@
 import _ from "lodash";
 import Chance from "chance";
+import { getLinks, getBacklinks } from "./wiki";
 const chance = new Chance();
 
 export type Id = string;
@@ -230,7 +231,7 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
         : [edge.target, edge.source]
       ).map((x) => getVertex(vertices, x));
 
-      if (!me.x && !me.y) {
+      if (_.isUndefined(me.x) && _.isUndefined(me.y)) {
         const angle = _.random(0, 2 * Math.PI);
         const mean = initialRadius / 4 + (titleVertex.degree ** 2 / maxDegree ** 2) * 3;
         const radius =
@@ -272,4 +273,92 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
   }
 }
 
+const makeVertex = (id: Id): Vertex => ({ id });
+
+async function buildGraph(titles: string[]) {
+  let { vertices, edges } = (
+    await Promise.all(
+      titles.map(async (title) => {
+        let [links, backlinks] = await Promise.all([
+          // getLinks(title),
+          [],
+          getBacklinks(title),
+        ]);
+
+        return {
+          title,
+          links,
+          backlinks,
+        };
+      })
+    )
+  ).reduce(
+    ({ vertices, edges }, { title, links, backlinks }) => ({
+      vertices: [
+        ...vertices,
+        makeVertex(title),
+        ...backlinks.map(makeVertex),
+        // ...links.map(makeVertex),
+      ],
+      edges: [
+        ...edges,
+        ...backlinks.map((source) => ({
+          id: `${source}->${title}`,
+          source,
+          target: title,
+        })),
+        // ...links.map((target) => ({
+        //   id: `${title}->${target}`,
+        //   source: title,
+        //   target,
+        // })),
+      ],
+    }),
+    { vertices: [] as Vertex[], edges: [] as Edge[] }
+  );
+
+  let graph = new Graph(vertices, edges).calculateDegrees();
+
+  if (titles.length > 1) {
+    graph = graph.filter((vertex) => vertex.degree > 1).calculateDegrees();
+  }
+
+  return graph
+    .map(
+      (vertex) => {
+        let radius = 5 + _.clamp(2 * vertex.degree, 0, 15);
+
+        let color = titles.includes(vertex.id)
+          ? vertex.id === titles[titles.length - 1]
+            ? "#f5540a"
+            : "#f5ba17"
+          : "#2dd4c7";
+
+        return {
+          ...vertex,
+          radius,
+          color,
+        } as typeof vertex & { radius: number; color: string };
+      },
+      (edge, graph) => {
+        let source = graph.getVertex(edge.source);
+        let target = graph.getVertex(edge.target);
+
+        let weight = 0.1 + Math.min(source.degree, target.degree) / 12;
+
+        return {
+          ...edge,
+          weight,
+        } as typeof edge & { weight: number };
+      }
+    )
+    .layout(titles, { initialRadius: 1000 });
+}
+
+type UnwrapPromise<T> = T extends Promise<infer U> ? U : never;
+
+type DisplayGraph = UnwrapPromise<ReturnType<typeof buildGraph>>;
+
 export default Graph;
+export { buildGraph };
+export type { DisplayGraph };

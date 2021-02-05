@@ -10,3 +10,11 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
+
+a.colored-link {
+  color: hsl(180, 60%, 55%);
+}
+
+a.colored-link:visited {
+  color: hsl(200, 55%, 50%);
+}
