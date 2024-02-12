@@ -40,7 +40,7 @@ let props = [
   "mapdata",
 ] as const;
 
-type Prop = typeof props[number];
+type Prop = (typeof props)[number];
 
 let lists = [
   "abusefilters",
@@ -106,7 +106,7 @@ let lists = [
   "readinglistentries",
 ] as const;
 
-type List = typeof lists[number];
+type List = (typeof lists)[number];
 
 let generator = [
   "allcategories",
@@ -151,7 +151,11 @@ let generator = [
   "readinglistentries",
 ] as const;
 
-type Generator = typeof generator[number];
+type Generator = (typeof generator)[number];
+
+export let languages = ["nl", "en", "fr", "de"] as const;
+
+export type Language = (typeof languages)[number];
 
 type Params = {
   titles?: string | string[];
@@ -189,9 +193,9 @@ function stringifyParams(params: { [key: string]: any }) {
   });
 }
 
-export async function request(params: Params = {}) {
+export async function request(params: Params = {}, language: Language) {
   const url =
-    "https://nl.wikipedia.org/w/api.php?" +
+    `https://${language}.wikipedia.org/w/api.php?` +
     stringifyParams({
       ...params,
       action: params.action || "query",
@@ -245,8 +249,12 @@ const getCustomLimits = (params: Params): string[] => {
   return keys;
 };
 
-async function batchRequest(params: Params = {}, results: any[] = []): Promise<any[]> {
-  let res = await request(params);
+async function batchRequest(
+  params: Params,
+  language: Language,
+  results: any[] = []
+): Promise<any[]> {
+  let res = await request(params, language);
   results.push(res);
 
   if (res.continue) {
@@ -256,27 +264,23 @@ async function batchRequest(params: Params = {}, results: any[] = []): Promise<a
     let prefixes = getCustomLimits(params).map((x) => x.replace("limit", ""));
 
     if (
-      ![
-        continueType.slice(0, 1),
-        continueType.slice(0, 2),
-        continueType.slice(0, 3),
-      ].some((prefix) => prefixes.includes(prefix))
+      ![continueType.slice(0, 1), continueType.slice(0, 2), continueType.slice(0, 3)].some(
+        (prefix) => prefixes.includes(prefix)
+      )
     ) {
-      return await batchRequest({ ...params, [continueType]: continueKey }, results);
+      return await batchRequest({ ...params, [continueType]: continueKey }, language, results);
     }
   }
 
   return unwrapIfSingle(
-    results.flatMap((result) =>
-      unwrapIfSingle(_.isPlainObject(result) ? result.query : result)
-    )
+    results.flatMap((result) => unwrapIfSingle(_.isPlainObject(result) ? result.query : result))
   );
 }
 
 const Cache = new Map<string, string>();
 
-export async function api(params: Params = {}) {
-  let cacheKey = JSON.stringify(params);
+export async function api(params: Params, language: Language): Promise<any> {
+  let cacheKey = JSON.stringify({ params, language });
 
   if (Cache.has(cacheKey)) {
     try {
@@ -284,7 +288,7 @@ export async function api(params: Params = {}) {
     } catch {}
   }
 
-  let results = await batchRequest(params);
+  let results = await batchRequest(params, language);
   Cache.set(cacheKey, JSON.stringify(results));
   return results;
 }
@@ -395,42 +399,55 @@ type AllParams = {
   show?: "redirect" | "!redirect" | ("redirect" | "!redirect")[];
 };
 
-export async function getLinks(title: string): Promise<string[]> {
-  let links = await api({
-    titles: title,
-    generator: "links",
-    gplnamespace: 0,
-    gpllimit: "max",
-  });
+export async function getLinks(title: string, language: Language): Promise<string[]> {
+  let links = await api(
+    {
+      titles: title,
+      generator: "links",
+      gplnamespace: 0,
+      gpllimit: "max",
+    },
+    language
+  );
 
   return (_.isPlainObject(links) ? [links] : links)
     .filter((link) => !link.missing)
     .map(_.iteratee("title"));
 }
 
-export async function getBacklinks(title: string): Promise<string[]> {
+export async function getBacklinks(title: string, language: Language): Promise<string[]> {
   // For some reason, blredirect: true does not work with list: 'backlinks',
   // but gblredirect: true with generator: 'backlinks' _does_, so we use the latter /shrug
-  let backlinks = await api({
-    gbltitle: title,
-    generator: "backlinks",
-    gblnamespace: 0,
-    gbllimit: "max",
-    gblredirect: true,
-  });
+  let backlinks = await api(
+    {
+      gbltitle: title,
+      generator: "backlinks",
+      gblnamespace: 0,
+      gbllimit: "max",
+      gblredirect: true,
+    },
+    language
+  );
 
   return (!backlinks ? [] : _.isPlainObject(backlinks) ? [backlinks] : backlinks).map(
     _.iteratee("title")
   );
 }
 
-export async function search(query: string): Promise<string[]> {
-  let results: [string, string[], string[], string[]] = await api({
-    action: "opensearch",
-    search: query,
-    namespace: 0,
-    limit: 5,
-  });
+export async function search(query: string, language: Language): Promise<string[]> {
+  console.log(`search called with language: ${language}`);
+
+  let results: [string, string[], string[], string[]] = await api(
+    {
+      action: "opensearch",
+      search: query,
+      namespace: 0,
+      limit: 5,
+    },
+    language
+  );
+
+  console.log(`search results: ${results}`);
 
   let [, titles, summaries, urls] = results;
 
@@ -443,25 +460,76 @@ export async function search(query: string): Promise<string[]> {
   return pages.map(_.iteratee("title"));
 }
 
-export async function getImages(title: string) {
-  let results = await api({
-    titles: title,
-    generator: "images",
-    gimlimit: "max",
-    prop: ["imageinfo", "info"],
-    iilimit: "max",
-    iiprop: [
-      "url",
-      "size",
-      "canonicaltitle",
-      "mime",
-      "thumbmime",
-      "user",
-      "mediatype",
-      "comment",
-      "parsedcomment",
-    ],
-  });
+const blockedFiles = [
+  "Wiktionary-logo.svg",
+  "Wikibooks-logo.svg",
+  "Commons-logo.svg",
+  "1rightarrow blue.svg",
+  "Disambig-dark.svg",
+  "Nuvola single chevron right.svg",
+  "Portal.svg",
+  "Crystal Clear app package network.png",
+  "Internet-web-browser.svg",
+  "Wikivoyage-Logo-v3-icon.svg",
+  "Wikisource-logo.svg",
+  "Wikinews-logo.svg",
+  "Red pog.svg",
+  "Esculaap4.svg",
+  "Portal icon.svg",
+  "Speakerlink.svg",
+  "Brosen windrose nl.svg",
+  "Question book-new.svg",
+  "Symbol category class.svg",
+  "Foodlogo2.svg",
+  "Wikibooks-logo-en-noslogan.svg",
+  "Semi-protection-shackle.svg",
+];
+
+function ignoreTheseImages({ title }: { title: string }) {
+  if (
+    blockedFiles.map((file) => "Bestand:" + file).includes(title) ||
+    blockedFiles.map((file) => "File:" + file).includes(title)
+  ) {
+    return false;
+  }
+
+  if (title.startsWith("Bestand:P ") || title.startsWith("File:P ")) {
+    return false;
+  }
+
+  if (title.endsWith("-icon.svg")) {
+    return false;
+  }
+
+  if (title.endsWith("-logo.svg")) {
+    return false;
+  }
+
+  return true;
+}
+
+export async function getImages(title: string, language: Language) {
+  let results = await api(
+    {
+      titles: title,
+      generator: "images",
+      gimlimit: "max",
+      prop: ["imageinfo", "info"],
+      iilimit: "max",
+      iiprop: [
+        "url",
+        "size",
+        "canonicaltitle",
+        "mime",
+        "thumbmime",
+        "user",
+        "mediatype",
+        "comment",
+        "parsedcomment",
+      ],
+    },
+    language
+  );
 
   if (_.isPlainObject(results)) {
     results = [results];
@@ -469,33 +537,7 @@ export async function getImages(title: string) {
 
   return _.uniqBy(
     (results || [])
-      .filter(
-        (result) =>
-          ![
-            "Wiktionary-logo.svg",
-            "Wikibooks-logo.svg",
-            "Commons-logo.svg",
-            "1rightarrow blue.svg",
-            "Disambig-dark.svg",
-            "Nuvola single chevron right.svg",
-            "Portal.svg",
-            "Crystal Clear app package network.png",
-            "Internet-web-browser.svg",
-            "Wikivoyage-Logo-v3-icon.svg",
-            "Wikisource-logo.svg",
-            "Wikinews-logo.svg",
-            "Red pog.svg",
-            "Esculaap4.svg",
-            "Portal icon.svg",
-            "Speakerlink.svg",
-            "Brosen windrose nl.svg",
-          ]
-            .map((file) => "Bestand:" + file)
-            .includes(result.title) &&
-          !result.title.startsWith("Bestand:P ") &&
-          !result.title.endsWith("-icon.svg") &&
-          !result.title.endsWith("-logo.svg")
-      )
+      .filter(ignoreTheseImages)
       .map((result: any) => ({
         ..._.omit(result, "imageinfo"),
         ...result.imageinfo[0],
@@ -506,16 +548,20 @@ export async function getImages(title: string) {
 }
 
 export async function getFileUsage(
-  title: string
+  title: string,
+  language: Language
 ): Promise<{ title: string; url: string }[]> {
-  let results = await api({
-    titles: title,
-    prop: "globalusage",
-    gusite: "nlwiki",
-    gunamespace: 0,
-    gulimit: "max",
-    guprop: ["url"],
-  });
+  let results = await api(
+    {
+      titles: title,
+      prop: "globalusage",
+      gusite: `${language}wiki`,
+      gunamespace: 0,
+      gulimit: "max",
+      guprop: ["url"],
+    },
+    language
+  );
 
   return results.globalusage;
 }

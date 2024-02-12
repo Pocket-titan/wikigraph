@@ -34,10 +34,7 @@ function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   return 0;
 }
 
-function getComparator<Key extends string>(
-  order: Order,
-  orderBy: Key
-): (a: any, b: any) => number {
+function getComparator<Key extends string>(order: Order, orderBy: Key): (a: any, b: any) => number {
   return order === "desc"
     ? (a, b) => descendingComparator(a, b, orderBy)
     : (a, b) => -descendingComparator(a, b, orderBy);
@@ -146,9 +143,7 @@ const Pages = ({
                 size="small"
                 style={{
                   borderBottom: rows.length === 0 ? "none" : "1.5px solid #5e9a9e",
-                  padding: `6px ${i === columns.length - 1 ? 10 : 0}px 6px ${
-                    i === 0 ? 10 : 0
-                  }px`,
+                  padding: `6px ${i === columns.length - 1 ? 10 : 0}px 6px ${i === 0 ? 10 : 0}px`,
                   background: "var(--input-background)",
                   ...(i === 0
                     ? {

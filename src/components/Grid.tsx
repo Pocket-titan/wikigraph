@@ -1,7 +1,8 @@
 // Adapted from: https://github.com/AustinGomez/react-image-grid
 // I needed video elements too 🙃
+import _ from "lodash";
 import { useState, useCallback, useMemo } from "react";
-import { beautifyTitle } from "ts/utils";
+import { beautifyTitle, maybeResizeImage } from "ts/utils";
 
 type MediaData = {
   width: number;
@@ -10,9 +11,15 @@ type MediaData = {
   title: string;
 };
 
-type Image = MediaData & { mediatype: "BITMAP"; alt: string };
+type Resized = {
+  src: string;
+  width: number;
+  height: number;
+};
 
-type Video = MediaData & { mediatype: "VIDEO" };
+type Image = MediaData & { mediatype: "BITMAP"; alt: string } & { resized?: Resized };
+
+type Video = MediaData & { mediatype: "VIDEO" } & { resized?: Resized };
 
 type Media = Image | Video;
 
@@ -29,6 +36,14 @@ const Grid = ({
   margin?: number;
   onClick?: (media: Media) => void;
 }) => {
+  media = media.map((media) => {
+    if (media.mediatype === "BITMAP") {
+      return maybeResizeImage(media as Image, { maxWidth: 500, maxHeight: 500 });
+    } else {
+      return media;
+    }
+  });
+
   // Creates <img/> or <video/> tags from media and row metadata.
   const mediaDataToTag = useCallback(
     (
@@ -61,19 +76,20 @@ const Grid = ({
 
         const beautifulTitle = beautifyTitle(image[0].title);
 
+        const src = image[0].resized ? image[0].resized.src : image[0].src;
+
         return (
           <img
             style={style}
             data-index={totalIndex}
-            src={image[0].src}
+            src={src}
             title={beautifulTitle}
             alt={image[0].alt}
-            key={"img_" + image[0].src + "_" + image[1]}
+            key={"img_" + src + "_" + image[1]}
             onClick={(event) => {
-              // setSelectedIndex(
-              //   parseInt((target as HTMLImageElement).getAttribute("data-index")!, 10)
-              // );
               event.preventDefault();
+              event.stopPropagation();
+
               onClick(image[0]);
             }}
           />

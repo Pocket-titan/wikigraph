@@ -11,8 +11,8 @@ describe("working", () => {
       await Promise.all(
         titles.map(async (title) => {
           let [links, backlinks] = await Promise.all([
-            wiki.getLinks(title),
-            wiki.getBacklinks(title),
+            wiki.getLinks(title, "nl"),
+            wiki.getBacklinks(title, "nl"),
           ]);
 
           return {

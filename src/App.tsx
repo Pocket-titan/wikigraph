@@ -1,64 +1,92 @@
-import React, { Suspense, useRef, useEffect } from "react";
-import { Canvas, useFrame, useThree } from "react-three-fiber";
-import {
-  Stats,
-  TrackballControls,
-  MapControls,
-  OrthographicCamera,
-  PerspectiveCamera,
-} from "@react-three/drei";
+import { Suspense, useRef, useEffect } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
+import { Stats, OrthographicCamera } from "@react-three/drei";
+import CameraControls from "camera-controls";
+import { CameraControls as DreiCameraControls } from "@react-three/drei";
 import * as three from "three";
 import _ from "lodash";
-import { buildGraph, DisplayGraph } from "ts/graph";
+import { QueryParamProvider, useQueryParams, StringParam, ArrayParam } from "use-query-params";
+import { WindowHistoryAdapter } from "use-query-params/adapters/window";
+import Graph, { buildGraph, DisplayGraph } from "ts/graph";
 import { useStore, Data } from "ts/hooks/useStore";
 import Input from "components/Input";
 import Pages from "components/Pages";
 import GraphView from "components/Graph";
 import PageInfo from "components/PageInfo";
-import type { TrackballControls as Trackball } from "three/examples/jsm/controls/TrackballControls";
+import LanguageToggle from "components/LanguageToggle";
+import HelpButton from "components/HelpButton";
+import "./App.css";
+import { EffectComposer } from "@react-three/postprocessing";
+import { Language } from "ts/wiki";
+import { useEffectWithPrevious } from "ts/utils";
 
-const Scene = ({ graph }: { graph?: DisplayGraph }) => {
+const Scene = ({ graph, titles }: { graph?: DisplayGraph; titles: string[] }) => {
+  const controls = useThree().controls as unknown as CameraControls;
+
+  useEffect(() => {
+    if (!graph || titles.length === 0) {
+      return;
+    }
+
+    const lastTitle = _.last(titles)!;
+    const vertex = graph.getVertex(lastTitle);
+
+    if (!vertex) {
+      return;
+    }
+
+    // controls.fitToSphere
+
+    // controls.setLookAt(vertex.x, vertex.y, 32, vertex.x, vertex.y, 0, true);
+    // controls.dollyTo(2, true);
+  }, [graph]);
+
   return (
     <>
       <ambientLight />
       <hemisphereLight color="#ffffff" intensity={1.0} />
-      {/* <pointLight position={[0, 0, 15]} intensity={2.0} color="#ffffff" /> */}
+      <pointLight position={[0, 0, 15]} intensity={2.0} color="#ffffff" />
       {graph && <GraphView graph={graph} />}
     </>
   );
 };
 
-const Controls = () => {
-  const { camera, gl, invalidate } = useThree();
-  const ref = useRef<any>();
-
-  useFrame(() => ref.current!.update());
-
-  useEffect(() => {
-    ref.current.addEventListener("change", invalidate);
-  }, []);
-
-  return (
-    <TrackballControls
-      mouseButtons={{
-        LEFT: three.MOUSE.PAN,
-        MIDDLE: three.MOUSE.MIDDLE,
-        RIGHT: three.MOUSE.ROTATE,
-      }}
-      noRotate
-      panSpeed={15}
-      ref={ref}
-      args={[camera, gl.domElement]}
-      dynamicDampingFactor={0.2}
-      staticMoving={false}
-    />
-  );
-};
+const initialCameraPosition = new three.Vector3(0, 0, 32);
 
 const App = () => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { graph, titles, data, setGraph, setTitles, setData, clicked } = useStore();
-  const controls = useRef<Trackball>();
+  const { graph, setGraph, data, setData, language, setLanguage, titles, setTitles, clicked } =
+    useStore();
+  const camera = useRef<three.OrthographicCamera>(null);
+  const [params, setParams] = useQueryParams({
+    language: StringParam,
+    titles: ArrayParam,
+  });
+
+  useEffect(() => {
+    if (params.language && params.language !== language) {
+      setLanguage(params.language as Language);
+    }
+
+    if (params.titles && !_.isEqual(params.titles, titles)) {
+      setTitles(params.titles as string[]);
+    }
+  }, []);
+
+  useEffect(() => {
+    setParams({ language, titles });
+  }, [language, titles]);
+
+  useEffectWithPrevious(
+    (prevLanguage: Language) => {
+      if (_.isString(prevLanguage) && _.isString(language) && prevLanguage !== language) {
+        setGraph(undefined);
+        setTitles([]);
+        setData({});
+      }
+    },
+    [language]
+  );
 
   useEffect(() => {
     if (titles.length === 0) {
@@ -83,7 +111,7 @@ const App = () => {
             }, {} as Data)
       );
 
-      let newGraph = await buildGraph(titles);
+      let newGraph = await buildGraph(titles, language);
 
       setGraph(newGraph);
       setData(
@@ -109,74 +137,69 @@ const App = () => {
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
-      <div
-        style={{
-          position: "absolute",
-          zIndex: 10,
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          marginTop: 15,
-        }}
-      >
-        <Input
-          ref={inputRef}
-          onResultClick={(result) => {
-            if (titles.includes(result)) {
-              return;
+      <div className="ui-container">
+        <div className="pages-container">
+          <Pages
+            pages={titles.map((title) => ({ title }))}
+            data={data}
+            removeTitle={(title) =>
+              setTitles((oldTitles) => {
+                let newTitles = _.pull([...oldTitles], title);
+                return newTitles;
+              })
             }
+          />
+        </div>
 
-            setTitles((oldTitles) => [...oldTitles, result]);
-          }}
-        />
+        <div className="search-container">
+          <Input
+            ref={inputRef}
+            onResultClick={(result) => {
+              if (titles.includes(result)) {
+                return;
+              }
+
+              setTitles((oldTitles) => [...oldTitles, result]);
+            }}
+          />
+        </div>
+
+        <div className="toggle-container">
+          <LanguageToggle />
+        </div>
+
+        <div className="help-container">
+          <HelpButton />
+        </div>
       </div>
-      <div
-        style={{
-          position: "absolute",
-          zIndex: 1,
-          top: "9vh",
-          left: 15,
-        }}
-      >
-        <Pages
-          pages={titles.map((title) => ({ title }))}
-          data={data}
-          removeTitle={(title) =>
-            setTitles((oldTitles) => {
-              let newTitles = _.pull([...oldTitles], title);
-              return newTitles;
-            })
-          }
+      {clicked && (
+        <PageInfo
+          title={clicked.id}
+          connections={graph ? graph.getVertex(clicked.id).connections : []}
         />
-      </div>
-      {clicked && <PageInfo title={clicked.id} />}
+      )}
       <Canvas
         // invalidateFrameloop
-        concurrent
+        // concurrent
         onCreated={({ gl, camera }) => {
-          gl.outputEncoding = three.sRGBEncoding;
+          // gl.outputEncoding = three.sRGBEncoding;
+          gl.outputColorSpace = three.SRGBColorSpace;
+          // gl.setClearColor()
         }}
         onClick={(e) => {
           inputRef.current?.blur();
+          e.stopPropagation();
         }}
       >
         <OrthographicCamera
+          ref={camera}
           makeDefault
-          position={[0, 0, 32]}
+          position={initialCameraPosition}
           zoom={1}
           near={0}
-          far={100}
+          far={10000}
         />
-        <TrackballControls
-          ref={controls}
-          mouseButtons={{
-            LEFT: three.MOUSE.PAN,
-            MIDDLE: three.MOUSE.MIDDLE,
-            RIGHT: three.MOUSE.ROTATE,
-          }}
-          // noRotate
-          panSpeed={15}
-        />
+
         {process.env.NODE_ENV === "development" && (
           <>
             <Stats />
@@ -184,12 +207,41 @@ const App = () => {
             <axesHelper />
           </>
         )}
+        <DreiCameraControls
+          makeDefault
+          // truckSpeed={2}
+          polarRotateSpeed={0}
+          azimuthRotateSpeed={0}
+          // maxSpeed={10}
+          dollySpeed={5}
+          dollyToCursor={true}
+          mouseButtons={{
+            left: CameraControls.ACTION.TRUCK,
+            middle: CameraControls.ACTION.NONE,
+            right: CameraControls.ACTION.NONE,
+            wheel: CameraControls.ACTION.ZOOM,
+          }}
+          touches={{
+            one: CameraControls.ACTION.TOUCH_TRUCK,
+            two: CameraControls.ACTION.TOUCH_DOLLY,
+            three: CameraControls.ACTION.NONE,
+          }}
+          minZoom={0.2}
+          maxZoom={5}
+        />
+
         <Suspense fallback={null}>
-          <Scene graph={graph} />
+          <Scene graph={graph} titles={titles} />
         </Suspense>
       </Canvas>
     </div>
   );
 };
 
-export default App;
+export default () => {
+  return (
+    <QueryParamProvider adapter={WindowHistoryAdapter}>
+      <App />
+    </QueryParamProvider>
+  );
+};

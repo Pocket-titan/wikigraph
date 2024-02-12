@@ -13,6 +13,7 @@ describe("works", () => {
       id: `${source}->${target}`,
       source,
       target,
+      weight: 1,
     }));
 
     let graph = new Graph(vertices, edges).calculateDegrees().layout(["b"]);

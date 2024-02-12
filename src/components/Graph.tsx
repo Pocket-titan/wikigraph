@@ -1,17 +1,17 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import * as three from "three";
-import { useThree, useUpdate } from "react-three-fiber";
 import type { DisplayGraph } from "ts/graph";
 import { useStore } from "ts/hooks/useStore";
 import { Html } from "@react-three/drei";
-import { OrthographicCamera } from "three";
+import { Bloom, EffectComposer, Outline } from "@react-three/postprocessing";
+import { BlendFunction, Resizer, KernelSize } from "postprocessing";
 
 const HoverInfo = ({
   vertex: { id, x, y, color, radius },
 }: {
   vertex: { id: string; x: number; y: number; color: string; radius: number };
 }) => (
-  <Html position={[x + radius, y, 1]} scaleFactor={2} zIndexRange={[0, 100]}>
+  <Html position={[x + radius, y, 1]} distanceFactor={2} zIndexRange={[0, 100]}>
     <div
       style={{
         background: "white",
@@ -32,61 +32,62 @@ const dummyColor = new three.Color();
 const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
   const setClicked = useStore((state) => state.setClicked);
   const [hovered, setHovered] = useState<{ instanceId: number; id: string }>();
-  let { camera } = useThree();
+  const edgeGeometry = useRef<three.BufferGeometry>();
+  const nodeMesh = useRef<three.InstancedMesh>();
 
-  console.log(
-    `vertices`,
-    vertices.find(({ id }) => id === "Kaas")
-  );
+  useLayoutEffect(() => {
+    if (!nodeMesh.current) {
+      return;
+    }
 
-  console.log(`camera.position`, camera.position);
+    vertices.forEach((vertex, i) => {
+      dummyObject.position.set(vertex.x, vertex.y, 1);
+      dummyObject.scale.set(vertex.radius, vertex.radius, 1);
+      dummyObject.updateMatrix();
+      nodeMesh.current!.setMatrixAt(i, dummyObject.matrix);
 
-  const nodeMesh = useUpdate<three.InstancedMesh>(
-    (mesh) => {
-      vertices.forEach((vertex, i) => {
-        dummyObject.position.set(vertex.x, vertex.y, 1);
-        dummyObject.scale.set(vertex.radius, vertex.radius, 1);
-        dummyObject.updateMatrix();
-        mesh.setMatrixAt(i, dummyObject.matrix);
+      dummyColor.set(vertex.color);
+      nodeMesh.current!.setColorAt(i, dummyColor);
+    });
 
-        dummyColor.set(vertex.color);
-        mesh.setColorAt(i, dummyColor);
-      });
+    nodeMesh.current.instanceMatrix.needsUpdate = true;
+    nodeMesh.current.geometry.computeBoundingSphere();
+  }, [vertices]);
 
-      mesh.instanceMatrix.needsUpdate = true;
-      mesh.geometry.computeBoundingSphere();
-    },
-    [vertices]
-  );
+  useLayoutEffect(() => {
+    if (!edgeGeometry.current) {
+      return;
+    }
 
-  const edgeGeometry = useUpdate<three.BufferGeometry>(
-    (geometry) => {
-      geometry.setFromPoints(
-        edges
-          .map(({ from, to }) => [
-            new three.Vector3(from.x, from.y, -1),
-            new three.Vector3(to.x, to.y, -1),
-          ])
-          .flat(1)
-      );
+    edgeGeometry.current.setFromPoints(
+      edges
+        .map(({ from, to }) => [
+          new three.Vector3(from.x, from.y, -1),
+          new three.Vector3(to.x, to.y, -1),
+        ])
+        .flat(1)
+    );
 
-      geometry.computeBoundingSphere();
-    },
-    [edges]
-  );
+    edgeGeometry.current.computeBoundingSphere();
+  }, [edges]);
 
   const { edgeColors } = useMemo(() => {
     const edgeColors = Float32Array.from(
       edges
         .map((edge, i) =>
-          hovered && hovered.id !== edge.source && hovered.id !== edge.target
+          !hovered
+            ? [
+                [0.2, 0.6, 0.9],
+                [0.7, 0.2, 0.1],
+              ]
+            : hovered.id !== edge.source && hovered.id !== edge.target
             ? [
                 [0.086, 0.086, 0.11],
                 [0.086, 0.086, 0.11],
               ]
             : [
-                [0.2, 0.6, 0.9],
-                [0.7, 0.2, 0.1],
+                [0.7, 0, 0.1],
+                [0, 0.9, 0.9],
               ]
         )
         .flat(2)
@@ -108,7 +109,7 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
     if (hovered !== undefined) {
       vertices.forEach((vertex, i) => {
         if (!vertex.connections.includes(hovered.id)) {
-          setColor(i, "#16161b");
+          setColor(i, "#404045");
         }
       });
 
@@ -126,14 +127,14 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
         // We set the `key` prop such that React recreates it everytime `vertices.length` changes,
         // this is because we can't increase the count of an InstancedMesh without recreating it
         key={
-          vertices[0]?.id ??
-          "0" + vertices.length + vertices[(vertices.length || 1) - 1]?.id ??
-          "0" + edges[0]?.id ??
-          "0" + edges.length + edges[(edges.length || 1) - 1]?.id ??
-          "0"
+          (vertices[0]?.id ??
+            "0" + vertices.length + vertices[(vertices.length || 1) - 1]?.id ??
+            "0" + edges[0]?.id ??
+            "0" + edges.length + edges[(edges.length || 1) - 1]?.id ??
+            "0") + "_nodes"
         }
         matrixAutoUpdate={false}
-        ref={nodeMesh}
+        ref={(ref) => void (nodeMesh.current = ref as any)}
         args={[null!, null!, vertices.length]}
         onPointerOut={({ instanceId }) => {
           if (instanceId === undefined) {
@@ -141,6 +142,7 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
           }
 
           let vertex = vertices[instanceId];
+          document.body.classList.remove("hovered");
 
           setColor(instanceId, vertex.color);
           setHovered(undefined);
@@ -151,6 +153,7 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
           }
 
           let vertex = vertices[instanceId];
+          document.body.classList.add("hovered");
 
           if (hovered === undefined) {
             setHovered({ instanceId, id: vertex.id });
@@ -162,25 +165,25 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
             setHovered({ instanceId, id: vertex.id });
           }
         }}
-        onPointerUp={({ instanceId }) => {
-          if (instanceId === undefined) {
+        onClick={(event) => {
+          event.stopPropagation();
+
+          if (event.instanceId === undefined) {
             return;
           }
 
-          let vertex = vertices[instanceId];
+          let vertex = vertices[event.instanceId];
           setClicked(vertex);
         }}
       >
-        <circleBufferGeometry args={[1, 30]} />
+        <circleGeometry args={[1, 30]} />
         <meshBasicMaterial />
       </instancedMesh>
+
       {hovered !== undefined && <HoverInfo vertex={vertices[hovered.instanceId]} />}
       <lineSegments matrixAutoUpdate={false}>
-        <bufferGeometry ref={edgeGeometry} attach="geometry">
-          <bufferAttribute
-            attachObject={["attributes", "color"]}
-            args={[edgeColors, 3]}
-          />
+        <bufferGeometry ref={(ref) => void (edgeGeometry.current = ref as any)} attach="geometry">
+          <bufferAttribute attach={"attributes-color"} args={[edgeColors, 3]} />
         </bufferGeometry>
         <lineBasicMaterial
           attach="material"
@@ -191,43 +194,6 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
           linewidth={0.5}
         />
       </lineSegments>
-      {/* <primitive ref={nodeMesh} object={instancedNodeMesh} /> */}
-      {/* <instancedMesh ref={nodeMesh} args={[null!, null!, 100000]}>
-        <circleBufferGeometry args={[1, 30]} />
-        <meshBasicMaterial />
-      </instancedMesh> */}
-      {/* <lineSegments args={[geom]}>
-        <lineBasicMaterial color={"white"} linewidth={10} />
-      </lineSegments> */}
-      {/* </instancedMesh> */}
-      {/* <instancedMesh ref={edgeMesh} args={[null!, null!, 10000]}>
-        <meshLine
-          attach="geometry"
-          points={edges
-            .map(({ from, to }) => [
-              new three.Vector3(from.x, from.y, -1),
-              new three.Vector3(to.x, to.y, -1),
-            ])
-            .flat(1)}
-        ></meshLine>
-        <meshLineMaterial attach="material" lineWidth={2} />
-      </instancedMesh> */}
-      {/* <group matrixAutoUpdate={false}>
-        {edges.map((edge) => {
-          return (
-            <mesh>
-              <meshLine
-                attach="geometry"
-                points={[
-                  new three.Vector3(edge.from.x, edge.from.y, -1),
-                  new three.Vector3(edge.to.x, edge.to.y, -1),
-                ]}
-              />
-              <meshLineMaterial attach="material" lineWidth={0.5} />
-            </mesh>
-          );
-        })}
-      </group> */}
     </>
   );
 };

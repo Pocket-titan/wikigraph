@@ -1,11 +1,9 @@
-import create, { State, StateCreator } from "zustand";
+import { create } from "zustand";
+import { persist, StateStorage, createJSONStorage } from "zustand/middleware";
 import produce, { Draft } from "immer";
-import { Vertex, DisplayGraph } from "../graph";
-
-const immer = <T extends State>(
-  config: StateCreator<T, (fn: (draft: Draft<T>) => void) => void>
-): StateCreator<T> => (set, get, api) =>
-  config((fn) => set(produce(fn) as (state: T) => T), get, api);
+import { immer } from "zustand/middleware/immer";
+import type { Vertex, DisplayGraph } from "../graph";
+import type { Language } from "ts/wiki";
 
 type Data = {
   [key: string]: {
@@ -15,18 +13,28 @@ type Data = {
   };
 };
 
-const useStore = create<{
-  titles: string[];
-  graph?: DisplayGraph;
-  data?: Data;
-  setTitles: (titles: string[] | ((oldTitles: string[]) => string[])) => void;
-  setGraph: (graph?: DisplayGraph) => void;
-  setData: (data?: Data) => void;
-  clicked?: Vertex;
-  setClicked: (vertex?: Vertex) => void;
-}>(
+const useStore = create<
+  {
+    language: Language;
+    setLanguage: (language: Language) => void;
+    titles: string[];
+    setTitles: (titles: string[] | ((oldTitles: string[]) => string[])) => void;
+    graph?: DisplayGraph;
+    setGraph: (graph?: DisplayGraph) => void;
+    data?: Data;
+    setData: (data?: Data) => void;
+    clicked?: Vertex;
+    setClicked: (vertex?: Vertex) => void;
+  },
+  [["zustand/immer", never]]
+>(
   immer((set, get) => ({
     titles: [],
+    language: "en",
+    setLanguage: (language) => {
+      console.log("setLanguage", language);
+      set(() => ({ language }));
+    },
     graph: undefined,
     data: undefined,
     setTitles: (titles) => {
