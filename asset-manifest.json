@@ -1,22 +1,15 @@
 {
   "files": {
-    "main.css": "/wikigraph/static/css/main.fbdaf025.chunk.css",
-    "main.js": "/wikigraph/static/js/main.b656323e.chunk.js",
-    "main.js.map": "/wikigraph/static/js/main.b656323e.chunk.js.map",
-    "runtime-main.js": "/wikigraph/static/js/runtime-main.5835dd45.js",
-    "runtime-main.js.map": "/wikigraph/static/js/runtime-main.5835dd45.js.map",
-    "static/js/2.4bd8ee81.chunk.js": "/wikigraph/static/js/2.4bd8ee81.chunk.js",
-    "static/js/2.4bd8ee81.chunk.js.map": "/wikigraph/static/js/2.4bd8ee81.chunk.js.map",
-    "static/js/3.86d5c3fa.chunk.js": "/wikigraph/static/js/3.86d5c3fa.chunk.js",
-    "static/js/3.86d5c3fa.chunk.js.map": "/wikigraph/static/js/3.86d5c3fa.chunk.js.map",
+    "main.css": "/wikigraph/static/css/main.56699a4f.css",
+    "main.js": "/wikigraph/static/js/main.f7422bd4.js",
+    "static/js/864.b9a816cf.chunk.js": "/wikigraph/static/js/864.b9a816cf.chunk.js",
     "index.html": "/wikigraph/index.html",
-    "static/css/main.fbdaf025.chunk.css.map": "/wikigraph/static/css/main.fbdaf025.chunk.css.map",
-    "static/js/2.4bd8ee81.chunk.js.LICENSE.txt": "/wikigraph/static/js/2.4bd8ee81.chunk.js.LICENSE.txt"
+    "main.56699a4f.css.map": "/wikigraph/static/css/main.56699a4f.css.map",
+    "main.f7422bd4.js.map": "/wikigraph/static/js/main.f7422bd4.js.map",
+    "864.b9a816cf.chunk.js.map": "/wikigraph/static/js/864.b9a816cf.chunk.js.map"
   },
   "entrypoints": [
-    "static/js/runtime-main.5835dd45.js",
-    "static/js/2.4bd8ee81.chunk.js",
-    "static/css/main.fbdaf025.chunk.css",
-    "static/js/main.b656323e.chunk.js"
+    "static/css/main.56699a4f.css",
+    "static/js/main.f7422bd4.js"
   ]
 }
