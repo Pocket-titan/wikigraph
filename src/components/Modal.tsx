@@ -46,13 +46,18 @@ const UncontrolledModal = ({
       open={open}
       className="modal"
       onClose={() => setOpen(false)}
+      onKeyDown={({ key }) => {
+        if (key === "Escape") {
+          setOpen(false);
+        }
+      }}
       closeAfterTransition
       BackdropComponent={Backdrop}
       BackdropProps={{
         timeout: 250,
         style: {
           cursor: "pointer",
-          zIndex: -5,
+          zIndex: -1,
           ...backdropStyle,
         },
       }}

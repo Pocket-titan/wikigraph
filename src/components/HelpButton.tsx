@@ -63,10 +63,11 @@ const HelpButton = () => {
           <br />
           Start by typing in a page title. After selecting a page, you'll see a{" "}
           <Special>graph</Special> pop up, with the page <Special>node</Special> at the center,
-          surrounded by all of the pages that it contains <Special>links</Special> to. You can click
-          on any <Special>node</Special> to see the images contained on that page, and you can click
-          on any of the images to find a list of the pages that contain that particular image (this
-          is the "file usage" section on Wikipedia).
+          surrounded by all of the pages that it <Special>links</Special> to, or is linked{" "}
+          <em>by</em> (we call those <Special>backlinks</Special>). You can click on any{" "}
+          <Special>node</Special> to see the images contained on that page, and you can click on any
+          of the images to find a list of the pages that contain that particular image (this is the
+          "file usage" section on Wikipedia).
         </Typography>
       </Modal>
     </>

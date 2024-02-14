@@ -1,4 +1,4 @@
-import React, { CSSProperties, useMemo } from "react";
+import React, { CSSProperties, useEffect, useMemo, useRef } from "react";
 import { animated, useTransition } from "@react-spring/web";
 
 export const Fade = React.forwardRef<
@@ -11,6 +11,7 @@ export const Fade = React.forwardRef<
     style?: CSSProperties;
   }
 >(function Fade({ in: open, children, onEnter, onExited, style = {}, ...other }, ref) {
+  const fadeRef = useRef<HTMLDivElement>(null);
   const spring = useMemo(() => {
     return {
       from: { opacity: 0 },
@@ -36,12 +37,18 @@ export const Fade = React.forwardRef<
 
   const transitions = useTransition(open, spring);
 
+  useEffect(() => {
+    fadeRef?.current?.focus();
+  }, []);
+
   return transitions((_style, item) => {
     return (
       item && (
         <animated.div
+          ref={fadeRef}
           className="fade"
-          style={{ ...style, ..._style, outline: "none", zIndex: 10 }}
+          autoFocus
+          style={{ ...style, ..._style, outline: "none", zIndex: 1 }}
           {...other}
         >
           {children}

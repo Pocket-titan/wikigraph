@@ -66,9 +66,9 @@ export function maybeResizeImage<T extends { src: string; width: number; height:
   return image;
 }
 
-export function useEffectWithPrevious(
-  fn: (prev: any) => ReturnType<EffectCallback>,
-  deps: DependencyList = []
+export function useEffectWithPrevious<T extends any[]>(
+  fn: (prev: T) => ReturnType<EffectCallback>,
+  deps: T = [] as any as T
 ) {
   const prev = useRef(deps);
 

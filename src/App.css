@@ -357,6 +357,31 @@ a {
   fill: hsl(227, 18%, 45%);
 }
 
-.hovered {
-  cursor: pointer;
+.connection-tag {
+  padding: 6px 9px;
+  border-radius: 4px;
+  font-size: 14px;
+  position: relative;
+  color: white;
+  background: hsla(180, 74%, 62%, 0.15);
+
+  .page {
+    font-style: italic;
+  }
+}
+
+.connection-tag:not(:last-child) {
+  margin-right: 0.5rem;
+}
+
+.connection-tag:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  padding: 2px;
+  background: linear-gradient(330deg, #b294ff 20%, #57e6e6 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }

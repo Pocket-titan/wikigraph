@@ -8,6 +8,7 @@ import Grid from "./Grid";
 import { Typography } from "@material-ui/core";
 import { ImageInfo } from "./ImageInfo";
 import useCSSVariable from "ts/hooks/useCSSVariable";
+import type { Connections } from "ts/graph";
 
 type Image = {
   url: string;
@@ -18,7 +19,40 @@ type Image = {
   mime: string;
 };
 
-const PageInfo = ({ title, connections = [] }: { title: string; connections?: string[] }) => {
+function formatConnection(pages: string[]) {
+  return pages.length <= 6 ? (
+    pages.map((x, i) => (
+      <span className="page">
+        {x}
+        {i < pages.length - 1 ? ", " : null}
+      </span>
+    ))
+  ) : (
+    <span className="number">{pages.length}</span>
+  );
+}
+
+const Connections = ({ links, backlinks }: Connections["connections"]) => {
+  return (
+    <div style={{ marginLeft: "1rem", display: "flex", flexDirection: "row" }}>
+      {links.length > 0 && (
+        <div className="connection-tag" title="This page contains links to these pages">
+          links: {formatConnection(links)}
+        </div>
+      )}
+      {backlinks.length > 0 && (
+        <div className="connection-tag" title="This page is linked by these pages">
+          backlinks: {formatConnection(backlinks)}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const PageInfo = ({
+  title,
+  connections = { links: [], backlinks: [] },
+}: { title: string } & Partial<Connections>) => {
   const [setClicked, language] = useStore((state) => [state.setClicked, state.language]);
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<Image[]>([]);
@@ -65,14 +99,23 @@ const PageInfo = ({ title, connections = [] }: { title: string; connections?: st
         <ImageInfo {...highlightedImage} onExited={() => setHighlightedImage(undefined)} />
       )}
       <Modal open={open} setOpen={setOpen} onExited={() => setClicked(undefined)}>
-        <a
-          href={`https://${language}.wikipedia.org/wiki/${title.split(" ").join("_")}`}
-          target="_blank"
-          rel="noreferrer"
-          className="big-link"
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+          }}
         >
-          {title}
-        </a>
+          <a
+            href={`https://${language}.wikipedia.org/wiki/${title.split(" ").join("_")}`}
+            target="_blank"
+            rel="noreferrer"
+            className="big-link"
+          >
+            {title}
+          </a>
+          <Connections {...connections} />
+        </div>
         <ul
           style={{
             display: "flex",

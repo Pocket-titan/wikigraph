@@ -1,4 +1,4 @@
-import { Suspense, useRef, useEffect } from "react";
+import { Suspense, useRef, useEffect, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Stats, OrthographicCamera } from "@react-three/drei";
 import CameraControls from "camera-controls";
@@ -7,7 +7,7 @@ import * as three from "three";
 import _ from "lodash";
 import { QueryParamProvider, useQueryParams, StringParam, ArrayParam } from "use-query-params";
 import { WindowHistoryAdapter } from "use-query-params/adapters/window";
-import Graph, { buildGraph, DisplayGraph } from "ts/graph";
+import Graph, { buildGraph, computeBoundingSphere, DisplayGraph } from "ts/graph";
 import { useStore, Data } from "ts/hooks/useStore";
 import Input from "components/Input";
 import Pages from "components/Pages";
@@ -23,23 +23,21 @@ import { useEffectWithPrevious } from "ts/utils";
 const Scene = ({ graph, titles }: { graph?: DisplayGraph; titles: string[] }) => {
   const controls = useThree().controls as unknown as CameraControls;
 
-  useEffect(() => {
-    if (!graph || titles.length === 0) {
-      return;
-    }
+  useEffectWithPrevious(
+    ([prevGraph]) => {
+      if (!graph || !titles || titles.length === 0) {
+        return;
+      }
 
-    const lastTitle = _.last(titles)!;
-    const vertex = graph.getVertex(lastTitle);
+      if (prevGraph && prevGraph === graph) {
+        return;
+      }
 
-    if (!vertex) {
-      return;
-    }
-
-    // controls.fitToSphere
-
-    // controls.setLookAt(vertex.x, vertex.y, 32, vertex.x, vertex.y, 0, true);
-    // controls.dollyTo(2, true);
-  }, [graph]);
+      const sphere = computeBoundingSphere(graph.vertices);
+      controls.fitToSphere(sphere, true);
+    },
+    [graph] as const
+  );
 
   return (
     <>
@@ -55,8 +53,19 @@ const initialCameraPosition = new three.Vector3(0, 0, 32);
 
 const App = () => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { graph, setGraph, data, setData, language, setLanguage, titles, setTitles, clicked } =
-    useStore();
+  const {
+    graph,
+    setGraph,
+    data,
+    setData,
+    language,
+    setLanguage,
+    titles,
+    setTitles,
+    clicked,
+    cursor,
+    setCursor,
+  } = useStore();
   const camera = useRef<three.OrthographicCamera>(null);
   const [params, setParams] = useQueryParams({
     language: StringParam,
@@ -78,14 +87,14 @@ const App = () => {
   }, [language, titles]);
 
   useEffectWithPrevious(
-    (prevLanguage: Language) => {
+    ([prevLanguage]) => {
       if (_.isString(prevLanguage) && _.isString(language) && prevLanguage !== language) {
         setGraph(undefined);
         setTitles([]);
         setData({});
       }
     },
-    [language]
+    [language] as const
   );
 
   useEffect(() => {
@@ -175,20 +184,25 @@ const App = () => {
       {clicked && (
         <PageInfo
           title={clicked.id}
-          connections={graph ? graph.getVertex(clicked.id).connections : []}
+          connections={
+            graph ? graph.getVertex(clicked.id).connections : { links: [], backlinks: [] }
+          }
         />
       )}
       <Canvas
-        // invalidateFrameloop
-        // concurrent
-        onCreated={({ gl, camera }) => {
-          // gl.outputEncoding = three.sRGBEncoding;
+        onCreated={({ gl }) => {
           gl.outputColorSpace = three.SRGBColorSpace;
-          // gl.setClearColor()
         }}
         onClick={(e) => {
           inputRef.current?.blur();
           e.stopPropagation();
+        }}
+        onPointerEnter={() => setCursor("grab")}
+        // onPointerOut={() => setCursor("auto")}
+        onPointerDown={() => setCursor("grabbing")}
+        onPointerUp={() => setCursor("grab")}
+        style={{
+          cursor,
         }}
       >
         <OrthographicCamera
@@ -226,7 +240,7 @@ const App = () => {
             two: CameraControls.ACTION.TOUCH_DOLLY,
             three: CameraControls.ACTION.NONE,
           }}
-          minZoom={0.2}
+          minZoom={0.1}
           maxZoom={5}
         />
 

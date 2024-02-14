@@ -1,4 +1,5 @@
 import _ from "lodash";
+import * as three from "three";
 import Chance from "chance";
 import { getLinks, getBacklinks, Language } from "./wiki";
 import { hslToHex, random } from "./utils";
@@ -17,6 +18,13 @@ export type Edge = {
   weight: number;
 };
 
+export type Connections = {
+  connections: {
+    links: Id[];
+    backlinks: Id[];
+  };
+};
+
 const getVertex = <T extends Vertex>(vertices: Map<Id, T>, id: Id) => vertices.get(id)!;
 
 const setVertex = <T extends Vertex>(vertices: Map<Id, T>, vertex: T) =>
@@ -30,6 +38,17 @@ const firstVertex = <T extends Vertex>(vertices: Map<Id, T>) => {
   for (let key of vertices.keys()) {
     return getVertex(vertices, key);
   }
+};
+
+const getOtherVertex = <T extends Vertex, U extends Edge>(vertex: T, edge: U) => {
+  return vertex.id === edge.source ? edge.target : edge.source;
+};
+
+const midpoint = <T extends Position>(...vertices: T[]) => {
+  const midpoint = vertices
+    .reduce((acc, vertex) => [acc[0] + vertex.x, acc[1] + vertex.y], [0, 0])
+    .map((x) => x / vertices.length);
+  return { x: midpoint[0], y: midpoint[1] };
 };
 
 export type Degrees = {
@@ -140,9 +159,9 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
     return new Graph(vertices, edges);
   }
 
-  calculateDegrees(): Graph<T & Degrees & { connections: Id[] }, U> {
+  calculateDegrees(): Graph<T & Degrees & Connections, U> {
     let [vertices, edges] = [
-      new Map<Id, T & Degrees & { connections: Id[] }>(this._vertices as any),
+      new Map<Id, T & Degrees & Connections>(this._vertices as any),
       new Map(this._edges),
     ];
 
@@ -151,7 +170,7 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
         vertex[key] = 0;
       });
 
-      vertex.connections = [];
+      vertex.connections = { links: [], backlinks: [] };
     });
 
     edges.forEach((edge) => {
@@ -163,20 +182,22 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
       target.inDegree += 1;
       target.degree += 1;
 
-      source.connections.push(target.id);
-      target.connections.push(source.id);
+      source.connections.links.push(target.id);
+      target.connections.backlinks.push(source.id);
     });
 
-    return new Graph<T & Degrees & { connections: Id[] }, U>(vertices, edges);
+    return new Graph<T & Degrees & Connections, U>(vertices, edges);
   }
 
-  forceLayout(
+  async layout(
     titles: string[],
     { initialAngle = (2 * Math.PI) / titles.length, initialRadius = 10 } = {
       initialAngle: (2 * Math.PI) / titles.length,
       initialRadius: 10,
     }
-  ): T extends Degrees ? Graph<T & Position, U & { from: Position; to: Position }> : never {
+  ): Promise<
+    T extends Degrees ? Graph<T & Position, U & { from: Position; to: Position }> : never
+  > {
     let [vertices, edges] = [
       new Map<Id, T & Degrees & Partial<Position>>(this._vertices as any),
       new Map<Id, U & Partial<{ from: Position; to: Position }>>(this._edges),
@@ -193,6 +214,7 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
     let maxDegree = 0;
     let i = 0;
 
+    // Position the title vertices first
     vertices.forEach((vertex) => {
       if (vertex.degree > maxDegree) {
         maxDegree = vertex.degree;
@@ -207,156 +229,93 @@ class Graph<T extends Vertex = Vertex, U extends Edge = Edge> {
       }
     });
 
-    return this as any;
-  }
-
-  layout(
-    titles: string[],
-    {
-      // initialAngle = Math.PI * (3 - Math.sqrt(5)),
-      initialAngle = (2 * Math.PI) / titles.length,
-      initialRadius = 10,
-    } = {
-      // initialAngle: Math.PI * (3 - Math.sqrt(5)),
-      initialAngle: (2 * Math.PI) / titles.length,
-      initialRadius: 10,
-    }
-  ): T extends Degrees ? Graph<T & Position, U & { from: Position; to: Position }> : never {
-    let [vertices, edges] = [
-      new Map<Id, T & Degrees & Partial<Position>>(this._vertices as any),
-      new Map<Id, U & Partial<{ from: Position; to: Position }>>(this._edges),
-    ];
-
-    if (vertices.size === 0) {
-      return this as any;
-    }
-
-    if (!firstVertex(vertices)?.degree) {
-      throw new Error();
-    }
-
-    let maxDegree = 0;
-    let i = 0;
-
+    // Now all the title vertices have a position, we can use them to position the rest of the nodes
     vertices.forEach((vertex) => {
-      if (vertex.degree > maxDegree) {
-        maxDegree = vertex.degree;
-      }
-
       if (titles.includes(vertex.id)) {
-        let [angle, radius] = [initialAngle * i, initialRadius * Math.sqrt(0.5 + i)];
-
-        vertex.x = radius * Math.cos(angle);
-        vertex.y = radius * Math.sin(angle);
-        i += 1;
-      }
-    });
-
-    edges.forEach((edge) => {
-      // We're basing the layout of our nodes on their first link to a titleVertex,
-      // so bail out if we're dealing with none or only titleVertices
-      if (titles.filter((title) => title === edge.source || title === edge.target).length !== 1) {
         return;
       }
 
-      let [titleVertex, me] = (
-        titles.includes(edge.source) ? [edge.source, edge.target] : [edge.target, edge.source]
-      ).map((x) => getVertex(vertices, x));
+      const titleLinks = titles
+        .map(
+          (title) =>
+            (edges.get(`${vertex.id}->${title}`) || edges.get(`${title}->${vertex.id}`)) && title
+        )
+        .filter((edge) => edge !== undefined) as string[];
 
-      if (_.isUndefined(me.x) && _.isUndefined(me.y)) {
-        const angle = _.random(0, 2 * Math.PI);
-        const mean = initialRadius / 4 + (titleVertex.degree ** 2 / maxDegree ** 2) * 3;
-        const radius =
-          chance.normal({
-            mean,
-            dev: mean / 6,
-          }) +
-          me.inDegree / 2 +
-          edge.weight * 10;
-
-        me.x = titleVertex.x! + radius * Math.cos(angle);
-        me.y = titleVertex.y! + radius * Math.sin(angle);
+      if (titleLinks.length === 0) {
+        return;
       }
+
+      const center = midpoint(...titleLinks.map((title) => vertices.get(title)! as Position));
+      const centerDegree = titleLinks.length === 1 ? vertices.get(titleLinks[0])!.degree : 1;
+
+      const angle = _.random(0, 2 * Math.PI);
+      const mean =
+        (initialRadius / 4 + (centerDegree ** 2 / maxDegree ** 2) * 3) /
+        Math.max(1, Math.min(4, titleLinks.length));
+      const radius =
+        chance.normal({
+          mean,
+          dev: mean / (titleLinks.length === 1 ? 6 : 10),
+        }) +
+        vertex.inDegree / 2;
+
+      vertex.x = center.x + radius * Math.cos(angle);
+      vertex.y = center.y + radius * Math.sin(angle);
     });
 
-    // If there's still nodes without positions (can happen if they have no links to titleNodes,
-    // for example), we still need to give 'em a position
-    edges.forEach((edge) => {
-      let source = getVertex(vertices, edge.source);
-      let target = getVertex(vertices, edge.target);
-
-      if (!source.x && !source.y) {
-        source.x = _.random(-initialRadius, initialRadius, true);
-        source.y = _.random(-initialRadius, initialRadius, true);
+    // Force layout
+    if (vertices.size <= 5000) {
+      let minDegree = {
+        1: 0,
+        2: 0,
+        3: 1,
+        4: 1,
+        5: 2,
+        6: 2,
+        7: 3,
+        8: 3,
+      }[titles.length];
+      if (minDegree === undefined) {
+        minDegree = 4;
       }
+      const n_iterations = 5;
+      const k = 1;
+      const dr_max = 10;
 
-      if (!target.x && !target.y) {
-        target.x = _.random(-initialRadius, initialRadius, true);
-        target.y = _.random(-initialRadius, initialRadius, true);
-      }
-
-      edge.from = { x: source.x!, y: source.y! };
-      edge.to = { x: target.x!, y: target.y! };
-    });
-
-    const n_iterations = 50;
-    const k = 0.1;
-    const k2 = 0.01;
-
-    const cs = [
-      -4.56854966e-6, 1.15393731e-4, 3.21805999e-3, -8.41648908e-2, 4.72052812e-2, 4.99151898,
-    ];
-
-    for (let i = 0; i < n_iterations; i++) {
-      vertices.forEach((vertex) => {
-        if (titles.includes(vertex.id) || vertex.degree === 0) {
-          return;
-        }
-
-        let [dx, dy] = [0, 0];
-
-        vertices.forEach((other) => {
-          if (vertex.id === other.id || other.degree === 0) {
+      for (let i = 0; i < n_iterations; i++) {
+        // Add a little repulsion
+        vertices.forEach((vertex) => {
+          if (titles.includes(vertex.id) || vertex.degree <= minDegree!) {
             return;
           }
 
-          let [dx_, dy_] = [vertex.x! - other.x!, vertex.y! - other.y!];
+          let [dx, dy] = [0, 0];
 
-          let xsign = Math.sign(dx_);
-          let ysign = Math.sign(dy_);
+          vertices.forEach((other) => {
+            if (vertex.id === other.id || other.degree <= minDegree!) {
+              return;
+            }
 
-          const factor = Math.sqrt(dx_ ** 2 + dy_ ** 2) <= 5 ? 5 : 1;
+            let [dx_, dy_] = [vertex.x! - other.x!, vertex.y! - other.y!];
 
-          dx += Math.abs((other.degree ** (1 / 3) * k) / dx_ ** 2) * xsign * factor;
-          dy += Math.abs((other.degree ** (1 / 3) * k) / dy_ ** 2) * ysign * factor;
+            let xsign = Math.sign(dx_);
+            let ysign = Math.sign(dy_);
+
+            // Big force when they're too close, else normal
+            const factor = Math.sqrt(dx_ ** 2 + dy_ ** 2) <= 5 ? 5 : 1;
+
+            dx += Math.abs((other.degree ** (1 / 3) * k) / dx_ ** 2) * xsign * factor;
+            dy += Math.abs((other.degree ** (1 / 3) * k) / dy_ ** 2) * ysign * factor;
+          });
+
+          vertex.x! += Math.sign(dx) * Math.min(Math.abs(dx), dr_max);
+          vertex.y! += Math.sign(dy) * Math.min(Math.abs(dy), dr_max);
         });
-
-        vertex.x! += Math.sign(dx) * Math.min(Math.abs(dx), 10);
-        vertex.y! += Math.sign(dy) * Math.min(Math.abs(dy), 10);
-      });
-
-      edges.forEach((edge) => {
-        let source = vertices.get(edge.source)!;
-        let target = vertices.get(edge.target)!;
-
-        let [dx, dy] = [source.x! - target.x!, source.y! - target.y!];
-        let r = Math.sqrt(dx ** 2 + dy ** 2);
-
-        let xsign = Math.sign(dx);
-        let ysign = Math.sign(dy);
-
-        if (!titles.includes(edge.source)) {
-          source.x! -= xsign * Math.abs(k2 * dx) * source.degree ** (1 / 3);
-          source.y! -= ysign * Math.abs(k2 * dy) * source.degree ** (1 / 3);
-        }
-
-        if (!titles.includes(edge.target)) {
-          target.x! += xsign * Math.abs(k2 * dx) * target.degree ** (1 / 3);
-          target.y! += ysign * Math.abs(k2 * dy) * target.degree ** (1 / 3);
-        }
-      });
+      }
     }
 
+    // Position the edges
     edges.forEach((edge) => {
       let source = vertices.get(edge.source)!;
       let target = vertices.get(edge.target)!;
@@ -421,10 +380,23 @@ async function buildGraph(titles: string[], language: Language) {
   let graph = new Graph(vertices, edges).calculateDegrees();
 
   if (titles.length > 1) {
-    graph = graph.filter((vertex) => vertex.degree > 1).calculateDegrees();
+    let minDegree = {
+      1: 1,
+      2: 1,
+      3: 1,
+      4: 1,
+      5: 2,
+      6: 2,
+      7: 3,
+      8: 3,
+    }[titles.length];
+    if (minDegree === undefined) {
+      minDegree = 4;
+    }
+    graph = graph.filter((vertex) => vertex.degree > minDegree!).calculateDegrees();
   }
 
-  return graph
+  return await graph
     .map(
       (vertex) => {
         let radius = 5 + _.clamp(2 * vertex.degree, 0, 15);
@@ -456,6 +428,20 @@ async function buildGraph(titles: string[], language: Language) {
       }
     )
     .layout(titles, { initialRadius: 1000 });
+}
+
+export function computeBoundingSphere<T extends Position>(vertices: T[]) {
+  const center = vertices.reduce((acc, coord) => [acc[0] + coord.x, acc[1] + coord.y], [0, 0]);
+  const centroid = { x: center[0] / vertices.length, y: center[1] / vertices.length };
+
+  const radius = vertices.reduce((maxDistance, coord) => {
+    const distance = Math.sqrt(
+      Math.pow(coord.x - centroid.x, 2) + Math.pow(coord.y - centroid.y, 2)
+    );
+    return Math.max(maxDistance, distance);
+  }, 0);
+
+  return new three.Sphere(new three.Vector3(centroid.x, centroid.y, 0), radius);
 }
 
 type UnwrapPromise<T> = T extends Promise<infer U> ? U : never;

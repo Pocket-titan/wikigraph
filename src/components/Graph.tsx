@@ -32,6 +32,7 @@ const dummyColor = new three.Color();
 const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
   const setClicked = useStore((state) => state.setClicked);
   const [hovered, setHovered] = useState<{ instanceId: number; id: string }>();
+  const setCursor = useStore((state) => state.setCursor);
   const edgeGeometry = useRef<three.BufferGeometry>();
   const nodeMesh = useRef<three.InstancedMesh>();
 
@@ -108,7 +109,12 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
   useEffect(() => {
     if (hovered !== undefined) {
       vertices.forEach((vertex, i) => {
-        if (!vertex.connections.includes(hovered.id)) {
+        if (
+          !(
+            vertex.connections.links.includes(hovered.id) ||
+            vertex.connections.backlinks.includes(hovered.id)
+          )
+        ) {
           setColor(i, "#404045");
         }
       });
@@ -136,16 +142,19 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
         matrixAutoUpdate={false}
         ref={(ref) => void (nodeMesh.current = ref as any)}
         args={[null!, null!, vertices.length]}
+        onPointerOver={({ instanceId }) => {
+          setCursor("pointer");
+        }}
         onPointerOut={({ instanceId }) => {
           if (instanceId === undefined) {
             return;
           }
 
           let vertex = vertices[instanceId];
-          document.body.classList.remove("hovered");
 
           setColor(instanceId, vertex.color);
           setHovered(undefined);
+          setCursor("grab");
         }}
         onPointerMove={({ instanceId }) => {
           if (instanceId === undefined) {
@@ -153,7 +162,6 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
           }
 
           let vertex = vertices[instanceId];
-          document.body.classList.add("hovered");
 
           if (hovered === undefined) {
             setHovered({ instanceId, id: vertex.id });
@@ -174,6 +182,7 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
 
           let vertex = vertices[event.instanceId];
           setClicked(vertex);
+          setCursor("auto");
         }}
       >
         <circleGeometry args={[1, 30]} />
@@ -191,7 +200,7 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
           color="white"
           transparent
           opacity={0.3}
-          linewidth={0.5}
+          linewidth={5}
         />
       </lineSegments>
     </>

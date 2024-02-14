@@ -1,7 +1,7 @@
 import Graph from "./graph";
 
 describe("works", () => {
-  it("layouts", () => {
+  it("layouts", async () => {
     let vertices = ["a", "b", "c", "d"].map((id) => ({ id }));
     let edges = [
       ["a", "b"],
@@ -16,7 +16,7 @@ describe("works", () => {
       weight: 1,
     }));
 
-    let graph = new Graph(vertices, edges).calculateDegrees().layout(["b"]);
+    let graph = await new Graph(vertices, edges).calculateDegrees().layout(["b"]);
 
     expect(
       graph.vertices.every(

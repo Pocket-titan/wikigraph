@@ -13,6 +13,8 @@ type Data = {
   };
 };
 
+type Cursor = "grab" | "grabbing" | "pointer" | "auto";
+
 const useStore = create<
   {
     language: Language;
@@ -25,6 +27,8 @@ const useStore = create<
     setData: (data?: Data) => void;
     clicked?: Vertex;
     setClicked: (vertex?: Vertex) => void;
+    cursor: Cursor;
+    setCursor: (cursor: Cursor) => void;
   },
   [["zustand/immer", never]]
 >(
@@ -56,6 +60,12 @@ const useStore = create<
     setClicked: (vertex) => {
       set(() => ({
         clicked: vertex,
+      }));
+    },
+    cursor: "auto",
+    setCursor: (cursor) => {
+      set(() => ({
+        cursor,
       }));
     },
   }))
