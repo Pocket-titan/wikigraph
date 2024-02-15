@@ -8,12 +8,12 @@
       "type": "image/x-icon"
     },
     {
-      "src": "wikigraph_logo_med_w_192.png",
+      "src": "wikigraph_logo_new_w_192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "wikigraph_logo_med_w_512.png",
+      "src": "wikigraph_logo_new_w_512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
