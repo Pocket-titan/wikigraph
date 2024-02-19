@@ -250,7 +250,7 @@ body {
   .help-container {
     grid-row: 2;
     grid-column: 3;
-    justify-self: center;
+    justify-self: flex-end;
   }
 
   .pages-container {
