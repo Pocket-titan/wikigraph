@@ -165,7 +165,7 @@ body {
 }
 
 .help .button {
-  z-index: 999;
+  z-index: 12;
   background: hsl(228, 18%, 27%);
   padding: 8px 8px;
   border-radius: 4px;

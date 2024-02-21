@@ -195,15 +195,14 @@ const App = () => {
         }}
         onClick={(e) => {
           inputRef.current?.blur();
-          e.stopPropagation();
+          // e.stopPropagation();
         }}
         onPointerEnter={() => setCursor("grab")}
         // onPointerOut={() => setCursor("auto")}
         onPointerDown={() => setCursor("grabbing")}
         onPointerUp={() => setCursor("grab")}
-        style={{
-          cursor,
-        }}
+        style={{ cursor }}
+        eventPrefix="client"
       >
         <OrthographicCamera
           ref={camera}
@@ -237,7 +236,7 @@ const App = () => {
           }}
           touches={{
             one: CameraControls.ACTION.TOUCH_TRUCK,
-            two: CameraControls.ACTION.TOUCH_DOLLY,
+            two: CameraControls.ACTION.TOUCH_ZOOM,
             three: CameraControls.ACTION.NONE,
           }}
           minZoom={0.1}
