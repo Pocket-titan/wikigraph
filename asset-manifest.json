@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/wikigraph/static/css/main.e5a3a8da.css",
-    "main.js": "/wikigraph/static/js/main.f3f77370.js",
+    "main.js": "/wikigraph/static/js/main.63347c86.js",
     "static/js/864.b9a816cf.chunk.js": "/wikigraph/static/js/864.b9a816cf.chunk.js",
     "index.html": "/wikigraph/index.html",
     "main.e5a3a8da.css.map": "/wikigraph/static/css/main.e5a3a8da.css.map",
-    "main.f3f77370.js.map": "/wikigraph/static/js/main.f3f77370.js.map",
+    "main.63347c86.js.map": "/wikigraph/static/js/main.63347c86.js.map",
     "864.b9a816cf.chunk.js.map": "/wikigraph/static/js/864.b9a816cf.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e5a3a8da.css",
-    "static/js/main.f3f77370.js"
+    "static/js/main.63347c86.js"
   ]
 }
