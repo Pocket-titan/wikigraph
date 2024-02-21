@@ -142,7 +142,11 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
         matrixAutoUpdate={false}
         ref={(ref) => void (nodeMesh.current = ref as any)}
         args={[null!, null!, vertices.length]}
-        onPointerOver={({ instanceId }) => {
+        onPointerOver={({ instanceId, buttons }) => {
+          if (instanceId === undefined || buttons === 1) {
+            return;
+          }
+
           setCursor("pointer");
         }}
         onPointerOut={({ instanceId }) => {
@@ -156,8 +160,8 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
           setHovered(undefined);
           setCursor("grab");
         }}
-        onPointerMove={({ instanceId }) => {
-          if (instanceId === undefined) {
+        onPointerMove={({ instanceId, buttons }) => {
+          if (instanceId === undefined || buttons === 1) {
             return;
           }
 
