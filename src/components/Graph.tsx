@@ -143,6 +143,7 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
         ref={(ref) => void (nodeMesh.current = ref as any)}
         args={[null!, null!, vertices.length]}
         onPointerOver={({ instanceId, buttons }) => {
+          console.log("Over, buttons", buttons);
           if (instanceId === undefined || buttons === 1) {
             return;
           }
@@ -161,6 +162,7 @@ const Graph = ({ graph: { vertices, edges } }: { graph: DisplayGraph }) => {
           setCursor("grab");
         }}
         onPointerMove={({ instanceId, buttons }) => {
+          console.log("Move, buttons", buttons);
           if (instanceId === undefined || buttons === 1) {
             return;
           }
